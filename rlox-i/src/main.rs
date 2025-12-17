@@ -4,6 +4,7 @@ use std::fs;
 use std::io;
 use std::fmt;
 
+#[derive(Debug)]
 enum TokenType {
     LeftParen,
     RightParen, 
@@ -68,29 +69,42 @@ fn error(line: usize, error_type: LexerErrors) {
     report(line, "", error_type);
 }
 
-struct Token {
-
+struct Token<'b> {
+    token_type: TokenType,
+    lexeme: &'b str,
+    line: usize,
 }
 
-impl fmt::Display for Token {
+impl<'b> Token<'b> {
+    fn new(token_type: TokenType, lexeme: &'b str, line: usize) -> Self {
+        Token { token_type, lexeme, line }
+    }
+}
+
+impl<'b> fmt::Display for Token<'b> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // write!(f, "{}", self.content)
-        todo!();
+        write!(f, "<{:?}, {}, {}>", self.token_type, self.lexeme, self.line)
     }
 }
 
 struct Scanner<'a> {
     source: &'a str,
+    tokens: Vec<Token<'a>>,
 }
 
-impl Scanner<'_> {
+impl<'a> Scanner<'a> {
+    fn new(source: &'a str) -> Self {
+        let mut tokens: Vec<Token> = Vec::new();
+        Scanner { source, tokens }
+    }
+
     fn scan_tokens(&self) -> Vec<Token> {
         todo!();
     }
 }
 
 fn run(source: &str) {
-    let scanner: Scanner = Scanner { source: source };
+    let scanner: Scanner = Scanner::new(source);
     let tokens: Vec<Token> = scanner.scan_tokens(); 
 
     for tok in tokens {
