@@ -4,44 +4,40 @@ use std::fs;
 use std::io;
 
 use crate::token::Token;
-use crate::scanner::Scanner;
+use crate::lexer::Lexer;
+use crate::lexer::LexerErrors;
 
 mod token;
-mod scanner;
+mod lexer;
 mod token_type;
 
-enum LexerErrors {
-    SourceReadError,
-}
-
-impl LexerErrors {
-    fn message(&self) -> &str {
-        match self {
-            LexerErrors::SourceReadError  => "Could not read/open source lox file.",
-        }
-    }
-}
-
-fn error(line: usize, error_type: LexerErrors) {
+pub fn error(line: usize, error_type: LexerErrors) {
     fn report(line: usize, locale: &str, error_type: LexerErrors) {
-        eprintln!("[line + {}] Error {}: {}", line, locale, error_type.message());
+        eprintln!("[line {}] Error {}: {}", line, locale, error_type.message());
     }
 
     report(line, "", error_type);
 }
 
-fn run(source: &str) {
-    let mut scanner: Scanner = Scanner::new(source);
-    let tokens: Vec<Token> = scanner.scan_tokens(); 
+fn run(source: &str) -> bool {
+    let mut tokens: Vec<Token> = Vec::new();
+    let mut scanner: Lexer = Lexer::new(source, &mut tokens);
+    let had_error: bool = scanner.scan_tokens(); 
 
-    for tok in tokens {
+    for tok in &tokens {
         println!("{}", tok);
     }
+
+    had_error
 }
 
 fn run_file(path: &String) {
-    let contents: String = fs::read_to_string(&path).expect(LexerErrors::SourceReadError.message());
-    run(&contents);
+    let contents: String = fs::read_to_string(&path).expect(LexerErrors::SourceReadError.message().as_str());
+    let had_error: bool = run(&contents);
+
+    if had_error {
+        process::exit(65);
+    }
 }
 
 fn run_prompt() {
