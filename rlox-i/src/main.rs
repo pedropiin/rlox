@@ -1,7 +1,7 @@
 use std::env;
 use std::process;
 use std::fs;
-use std::io;
+use std::io::{self, Write};
 
 use crate::token::Token;
 use crate::lexer::Lexer;
@@ -43,7 +43,8 @@ fn run_file(path: &String) {
 fn run_prompt() {
     let mut input_buf: String = String::from("");
     loop {
-        println!("> ");
+        print!("> ");
+        io::stdout().flush().unwrap();
         io::stdin().read_line(&mut input_buf).unwrap();
         run(&input_buf);
     }
@@ -51,10 +52,10 @@ fn run_prompt() {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() > 1 {
+    if args.len() > 2 {
         eprintln!("Usage: rlox [filename.lox].");
         process::exit(64);      // following UNIX "sysexits.h" header convention
-    } else if args.len() == 1 {
+    } else if args.len() == 2 {
         run_file(&args[0]);
     } else {
         run_prompt();

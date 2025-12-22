@@ -29,7 +29,7 @@ pub struct Lexer<'a> {
 
 impl<'a> Lexer<'a> {
     pub fn new(source: &'a str, tokens: &'a mut Vec<Token>) -> Self {
-        Lexer { source, tokens, start: 0, current: 0, line: 1, had_error: false}
+        Lexer { source, tokens, start: 0, current: 0, line: 1, had_error: false }
     }
 
     pub fn scan_tokens(&mut self) -> bool {
@@ -94,6 +94,12 @@ impl<'a> Lexer<'a> {
             // String literals
             '"' => self.string(),
 
+            // Number literals
+            c if c.is_ascii_digit() => self.number(),
+
+            // Identifiers and keywords
+            c if self.is_alpha(c) => self.identifier(),
+
             // Invalid characters
             c   => {
                 error(self.line, LexerErrors::InvalidChar(c));
@@ -117,9 +123,65 @@ impl<'a> Lexer<'a> {
         self.add_token(Str);
     }
 
+    fn number(&mut self) -> () {
+        while self.peek().is_ascii_digit() {
+            self.advance();
+        }
+
+        if self.peek() == '.' && self.peek_next().is_ascii_digit() {
+            self.advance();
+            while self.peek().is_ascii_digit() {
+                self.advance();
+            }
+        }
+
+        self.add_token(Number);
+    }
+
+    fn identifier(&mut self) -> () {
+        while self.is_alpha_numeric(self.peek()) {
+            self.advance();
+        }
+
+        let token_type: TokenType = match &self.source[self.start..self.current] {
+            "and"      => And,
+            "class"    => Class,
+            "else"     => Else,
+            "false"    => False,
+            "for"      => For,
+            "fun"      => Fun,
+            "if"       => If,
+            "nil"      => Nil,
+            "or"       => Or,
+            "print"    => Print,
+            "return"   => Return,
+            "super"    => Super,
+            "this"     => This,
+            "true"     => True,
+            "var"      => Var,
+            "while"    => While,
+            _          => Identifier,
+        };
+
+        self.add_token(token_type);
+    }
+
     fn peek(&self) -> char {
         if self.is_at_end() { '\0' }
         else { self.source.as_bytes()[self.current] as char }
+    }
+
+    fn peek_next(&self) -> char {
+        if self.current + 1 >= self.source.len() { '\0' }
+        else { self.source.as_bytes()[self.current + 1] as char }
+    }
+
+    fn is_alpha(&self, c: char) -> bool {
+        (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_')
+    }
+
+    fn is_alpha_numeric(&self, c: char) -> bool {
+        self.is_alpha(c) || c.is_ascii_digit()
     }
 
     fn advance(&mut self) -> char {
