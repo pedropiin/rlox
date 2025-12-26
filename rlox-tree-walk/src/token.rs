@@ -1,4 +1,26 @@
-#[derive(Debug)]
+use std::fmt;
+
+#[derive(Clone, Copy)]
+pub struct Token {
+    pub token_type: TokenType,
+    start: usize, 
+    end: usize,
+    line: usize,
+}
+
+impl Token {
+    pub fn new(token_type: TokenType, start: usize, end: usize, line: usize) -> Self {
+        Token { token_type, start, end, line }
+    }
+}
+
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "<{:?}, {}, {}, {}>", self.token_type, self.start, self.end, self.line)
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum TokenType {
     // Single-character tokens
     LeftParen,

@@ -5,19 +5,13 @@ use std::io::{self, Write};
 
 use crate::token::Token;
 use crate::lexer::Lexer;
-use crate::lexer::LexerErrors;
+use crate::parser::Parser;
 
 mod token;
 mod lexer;
-mod token_type;
-
-pub fn error(line: usize, error_type: LexerErrors) {
-    fn report(line: usize, locale: &str, error_type: LexerErrors) {
-        eprintln!("[line {}] Error {}: {}", line, locale, error_type.message());
-    }
-
-    report(line, "", error_type);
-}
+mod expr;
+mod parser;
+mod errors;
 
 fn run(source: &str) -> bool {
     let mut tokens: Vec<Token> = Vec::new();
@@ -32,7 +26,7 @@ fn run(source: &str) -> bool {
 }
 
 fn run_file(path: &String) {
-    let contents: String = fs::read_to_string(&path).expect(LexerErrors::SourceReadError.message().as_str());
+    let contents: String = fs::read_to_string(&path).expect("Could not read/open source lox file.");
     let had_error: bool = run(&contents);
 
     if had_error {
@@ -56,7 +50,7 @@ fn main() {
         eprintln!("Usage: rlox [filename.lox].");
         process::exit(64);      // following UNIX "sysexits.h" header convention
     } else if args.len() == 2 {
-        run_file(&args[0]);
+        run_file(&args[1]);
     } else {
         run_prompt();
     }

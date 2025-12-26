@@ -1,22 +1,8 @@
 use crate::token::Token;
-use crate::token_type::TokenType::{self, *};
-use crate::error;
+use crate::token::TokenType::{self, *};
+use crate::errors::{LexerError, error};
 
-pub enum LexerErrors {
-    SourceReadError,
-    InvalidChar(char),
-    UnterminatedString,
-}
 
-impl LexerErrors {
-    pub fn message(&self) -> String {
-        match self {
-            LexerErrors::SourceReadError  => "Could not read/open source lox file.".to_string(),
-            LexerErrors::InvalidChar(c)    => format!("Unexpected character '{}'.", c),
-            LexerErrors::UnterminatedString => "Unterminated string.".to_string(),
-        }
-    }
-}
 
 pub struct Lexer<'a> {
     source: &'a str,
@@ -80,9 +66,18 @@ impl<'a> Lexer<'a> {
             }
             '/' => {
                 let is_comment = self.advance_on_match('/');
+                let is_multiline_comment = self.advance_on_match('*');
                 if is_comment {
                     while self.peek() != '\n' && !self.is_at_end() { 
                         self.advance(); 
+                    }
+                } else if is_multiline_comment {
+                    loop {
+                        if !self.is_at_end() && self.peek() == '*' {
+                            self.advance();
+                            if !self.is_at_end() && self.peek() == '/' { self.advance(); break; }
+                        } 
+                        self.advance();
                     }
                 } else { self.add_token(Slash); }
             }
@@ -102,7 +97,7 @@ impl<'a> Lexer<'a> {
 
             // Invalid characters
             c   => {
-                error(self.line, LexerErrors::InvalidChar(c));
+                error(self.line, LexerError::InvalidChar(c).into());
                 self.had_error = true
             }
         }
@@ -115,7 +110,7 @@ impl<'a> Lexer<'a> {
         }
 
         if self.is_at_end() {
-            error(self.line, LexerErrors::UnterminatedString);
+            error(self.line, LexerError::UnterminatedString.into());
             return;
         }
 

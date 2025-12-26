@@ -1,0 +1,6 @@
+var var1 = "this is a var";
+var var2 = 10;
+/* testing
+multine
+comment*/
+var vare = 50.3;
