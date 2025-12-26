@@ -1,4 +1,4 @@
-pub fn error(line: usize, error_type: LoxError) {
+pub fn lox_error(line: usize, error_type: LoxError) {
     fn report(line: usize, locale: &str, error_type: LoxError) {
         eprintln!("[line {}] Error {}: {}", line, locale, error_type.message());
     }
@@ -48,12 +48,16 @@ impl LexerError {
 
 pub enum ParserError {
     TokenPeekError,
+    UnclosedParen,
+    PrimaryExprExpected,
 }
 
 impl ParserError {
     pub fn message(&self) -> String {
         match self {
             ParserError::TokenPeekError => "Error when trying to get token from internal Vec<Token>.".to_string(),
+            ParserError::UnclosedParen  => "Expected ')' after expression.".to_string(),
+            ParserError::PrimaryExprExpected => "Expected primary expression.".to_string(),
         }
     }
 }

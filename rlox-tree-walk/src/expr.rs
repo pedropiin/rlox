@@ -1,5 +1,6 @@
 use crate::token::Token;
 
+#[derive(Clone, Copy)]
 pub enum LiteralObject {
     StringLiteral {
         start: usize,
@@ -13,9 +14,11 @@ pub enum LiteralObject {
         start: usize,
         end: usize,
     },
-    LiteralValue {
-        start: usize,
-        end: usize,
+    BooleanLiteral {
+        value: bool,
+    },
+    NilLiteral {
+        value: Option<bool>,
     }
 }
 
@@ -34,5 +37,6 @@ pub enum Expr {
     Unary {
         operator: Token,
         right: Box<Expr>,
-    }
+    },
+    Unknown,
 }

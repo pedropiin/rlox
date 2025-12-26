@@ -1,6 +1,6 @@
 use crate::token::Token;
 use crate::token::TokenType::{self, *};
-use crate::errors::{LexerError, error};
+use crate::errors::{LexerError, lox_error};
 
 
 
@@ -97,7 +97,7 @@ impl<'a> Lexer<'a> {
 
             // Invalid characters
             c   => {
-                error(self.line, LexerError::InvalidChar(c).into());
+                lox_error(self.line, LexerError::InvalidChar(c).into());
                 self.had_error = true
             }
         }
@@ -110,7 +110,7 @@ impl<'a> Lexer<'a> {
         }
 
         if self.is_at_end() {
-            error(self.line, LexerError::UnterminatedString.into());
+            lox_error(self.line, LexerError::UnterminatedString.into());
             return;
         }
 
