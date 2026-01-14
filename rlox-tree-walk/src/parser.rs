@@ -1,4 +1,6 @@
-use crate::token::Token;
+use core::panic;
+
+use crate::token::{self, Token};
 use crate::token::TokenType::{self, *};
 use crate::expr::Expr;
 use crate::expr::LiteralObject::{self, *};
@@ -11,8 +13,12 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(&mut self, source: &'a str, tokens: &'a mut Vec<Token>) -> Parser<'_> {
+    pub fn new(source: &'a str, tokens: &'a mut Vec<Token>) -> Parser<'a> {
         Parser { source, tokens, current: 0 }
+    }
+
+    pub fn parse(&mut self) -> Box<Expr> {
+        self.expression()
     }
 
     fn expression(&mut self) -> Box<Expr> {
@@ -83,7 +89,7 @@ impl<'a> Parser<'a> {
         } else if self.match_token(&[True]) {
             return Box::new(Expr::Literal { value: LiteralObject::BooleanLiteral { value: true }});
         } else if self.match_token(&[Nil]) {
-            return Box::new(Expr::Literal { value: LiteralObject::NilLiteral { value: None }})
+            return Box::new(Expr::Literal { value: LiteralObject::NilLiteral })
         }
 
         if self.match_token(&[Number]) {
@@ -101,7 +107,7 @@ impl<'a> Parser<'a> {
         }
 
         lox_error((*self.previous()).line, ParserError::PrimaryExprExpected.into());
-        Box::new(Expr::Unknown)
+        panic!();
     }
 
     fn match_token(&mut self, tokens: &[TokenType]) -> bool {
@@ -116,7 +122,7 @@ impl<'a> Parser<'a> {
     }
 
     fn check(&self, token_type: &TokenType) -> bool {
-        if !self.is_at_end() { return false }
+        if self.is_at_end() { return false }
         self.peek().token_type == *token_type
     }
 
@@ -138,7 +144,23 @@ impl<'a> Parser<'a> {
         self.tokens.get(self.current - 1).unwrap_or_else(|| panic!("Could not get the {}th token.", self.current-1))
     }
 
-    fn consume(&self, token_type: TokenType, err: ParserError) {
-        todo!();
+    fn consume(&mut self, token_type: TokenType, err: ParserError) {
+        if self.check(&token_type) { let _ = self.advance(); }
+
+        lox_error(self.previous().line, ParserError::UnclosedParen.into());
+        panic!();
+    }
+
+    fn synchronize(&mut self) {
+        self.advance();
+
+        while !self.is_at_end() {
+            if self.previous().token_type == Semicolon { break; }
+
+            match self.peek().token_type {
+                Class | Fun | Var | For | If | While | Print | Return => break,
+                _ => { self.advance(); }
+            }
+        }
     }
 }

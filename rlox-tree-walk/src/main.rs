@@ -5,22 +5,33 @@ use std::io::{self, Write};
 
 use crate::token::Token;
 use crate::lexer::Lexer;
+use crate::expr::Expr;
 use crate::parser::Parser;
+use crate::ast_pretty_printer::AstPrinter;
 
 mod token;
 mod lexer;
 mod expr;
 mod parser;
 mod errors;
+mod ast_pretty_printer;
 
 fn run(source: &str) -> bool {
     let mut tokens: Vec<Token> = Vec::new();
     let mut scanner: Lexer = Lexer::new(source, &mut tokens);
     let had_error: bool = scanner.scan_tokens(); 
 
-    for tok in &tokens {
-        println!("{}", tok);
-    }
+    // for tok in &tokens {
+    //     println!("{}", tok);
+    // }
+
+    let mut parser: Parser = Parser::new(source, &mut tokens);
+    let expr: Box<Expr> = parser.parse();
+
+    if had_error { return had_error }
+
+    let ast_printer: AstPrinter = AstPrinter::new(source, &tokens);
+    ast_printer.print(&expr);
 
     had_error
 }

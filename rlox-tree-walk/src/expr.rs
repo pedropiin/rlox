@@ -17,9 +17,7 @@ pub enum LiteralObject {
     BooleanLiteral {
         value: bool,
     },
-    NilLiteral {
-        value: Option<bool>,
-    }
+    NilLiteral,
 }
 
 pub enum Expr {
@@ -38,5 +36,4 @@ pub enum Expr {
         operator: Token,
         right: Box<Expr>,
     },
-    Unknown,
 }
