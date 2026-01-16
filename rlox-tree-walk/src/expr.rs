@@ -20,6 +20,7 @@ pub enum LiteralObject {
     NilLiteral,
 }
 
+#[derive(Clone)]
 pub enum Expr {
     Binary {
         left: Box<Expr>,

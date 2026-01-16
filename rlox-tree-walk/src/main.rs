@@ -8,6 +8,7 @@ use crate::lexer::Lexer;
 use crate::expr::Expr;
 use crate::parser::Parser;
 use crate::ast_pretty_printer::AstPrinter;
+use crate::interpreter::Interpreter;
 
 mod token;
 mod lexer;
@@ -15,6 +16,7 @@ mod expr;
 mod parser;
 mod errors;
 mod ast_pretty_printer;
+mod interpreter;
 
 fn run(source: &str) -> bool {
     let mut tokens: Vec<Token> = Vec::new();
@@ -28,7 +30,10 @@ fn run(source: &str) -> bool {
     let mut parser: Parser = Parser::new(source, &mut tokens);
     let expr: Box<Expr> = parser.parse();
 
-    if had_error { return had_error }
+    let mut interpreter: Interpreter = Interpreter::new(source, &tokens);
+    let had_runtime_error: bool = interpreter.interpret(expr.as_ref());
+
+    if had_error || had_runtime_error { return had_error }
 
     let ast_printer: AstPrinter = AstPrinter::new(source, &tokens);
     ast_printer.print(&expr);
