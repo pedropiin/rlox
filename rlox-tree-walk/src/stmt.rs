@@ -1,0 +1,16 @@
+use crate::expr::Expr;
+use crate::token::Token;
+
+#[derive(Clone)]
+pub enum Stmt {
+    Expression {
+        expr: Box<Expr>,
+    },
+    Print {
+        expr: Box<Expr>,
+    },
+    Var {
+        name: Token,
+        initializer: Option<Box<Expr>>,
+    },
+}

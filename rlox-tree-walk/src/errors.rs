@@ -51,6 +51,8 @@ pub enum ParserError {
     TokenPeekError,
     UnclosedParen,
     PrimaryExprExpected,
+    SemicolonExpected,
+    NamelessVarDeclaration,
 }
 
 impl ParserError {
@@ -62,6 +64,10 @@ impl ParserError {
                 => "Expected ')' after expression.".to_string(),
             ParserError::PrimaryExprExpected 
                 => "Expected primary expression.".to_string(),
+            ParserError::SemicolonExpected
+                => "Expected ';' after expression.".to_string(),
+            ParserError::NamelessVarDeclaration
+                => "Expected a variable name.".to_string(),
         }
     }
 }
@@ -77,17 +83,20 @@ pub enum RuntimeError {
     InvalidUnaryOperandError,
     InvalidBinaryOperandsError,
     InvalidSumOperandsError,
+    DivisionByZeroError,
 }
 
 impl RuntimeError {
     pub fn message(&self) -> String {
         match self {
             RuntimeError::InvalidUnaryOperandError 
-                => "Operand must be a number".to_string(),
+                => "Operand must be a number.".to_string(),
             RuntimeError::InvalidBinaryOperandsError 
-                => "Both operands must be a number".to_string(),
+                => "Both operands must be a number.".to_string(),
             RuntimeError::InvalidSumOperandsError 
-                => "Both operands must be either a number or a string".to_string(),
+                => "Both operands must be either a number or a string.".to_string(),
+            RuntimeError::DivisionByZeroError
+                => "Cannot divide by zero.".to_string(),
         }
     }
 }

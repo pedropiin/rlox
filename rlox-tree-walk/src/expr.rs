@@ -1,5 +1,27 @@
 use crate::token::Token;
 
+#[derive(Clone)]
+pub enum Expr {
+    Binary {
+        left: Box<Expr>,
+        operator: Token,
+        right: Box<Expr>,
+    },
+    Grouping {
+        expression: Box<Expr>,
+    },
+    Literal {
+        value: LiteralObject,
+    },
+    Unary {
+        operator: Token,
+        right: Box<Expr>,
+    },
+    Variable {
+        name: Token,
+    },
+}
+
 #[derive(Clone, Copy)]
 pub enum LiteralObject {
     StringLiteral {
@@ -18,23 +40,4 @@ pub enum LiteralObject {
         value: bool,
     },
     NilLiteral,
-}
-
-#[derive(Clone)]
-pub enum Expr {
-    Binary {
-        left: Box<Expr>,
-        operator: Token,
-        right: Box<Expr>,
-    },
-    Grouping {
-        expression: Box<Expr>,
-    },
-    Literal {
-        value: LiteralObject,
-    },
-    Unary {
-        operator: Token,
-        right: Box<Expr>,
-    },
 }

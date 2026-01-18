@@ -1,6 +1,7 @@
 use crate::token::Token;
 use crate::token::TokenType::{self, *};
 use crate::expr::{Expr, LiteralObject};
+use crate::stmt::Stmt;
 
 pub struct AstPrinter<'a> {
     source: &'a str,
@@ -12,8 +13,14 @@ impl<'a> AstPrinter<'a> {
         AstPrinter { source, tokens }
     }
 
-    pub fn print(&self, expr: &Expr) {
-        println!("{}", self.visit_expr(expr));
+    pub fn print(&self, stmts: &Vec<Box<Stmt>>) -> () {
+        for stmt in stmts {
+            match stmt.as_ref() {
+                Stmt::Expression { expr } | Stmt::Print { expr }
+                    => println!("{}", self.visit_expr(expr)),
+                Stmt::Var { name, initializer } => todo!(),
+            }
+        }
     }
 
     fn visit_expr(&self, expr: &Expr) -> String {
@@ -39,6 +46,7 @@ impl<'a> AstPrinter<'a> {
                 let lexeme: String = self.get_lexeme(operator.start, operator.end);
                 self.parenthesize(lexeme, &[right.as_ref()])
             },
+            Expr::Variable { name } => todo!(),
         }
     }
 

@@ -1,7 +1,9 @@
 use crate::token::{Token, TokenType};
 use crate::expr::{Expr, LiteralObject};
+use crate::stmt::Stmt;
 use crate::errors::{LoxError, RuntimeError, lox_error};
 
+const EPSILON: f32 = 1e-6;
 
 pub struct RuntimeErrTup(usize, RuntimeError);
 
@@ -22,17 +24,38 @@ impl<'a> Interpreter<'a> {
         Interpreter { source: source, tokens: tokens }
     }
 
-    pub fn interpret(&self, expr: &Expr) -> bool {
-        let expr_result: Result<LiteralValue, RuntimeErrTup> = self.evaluate(expr);
-        match expr_result {
-            Ok(value) => {
-                self.stringify(&value);
-                false
+    pub fn interpret(&self, stmts: &Vec<Box<Stmt>>) -> bool {
+        let mut had_runtime_error: bool = false;
+        for stmt in stmts {
+            match self.execute(stmt) {
+                Ok(()) => (),
+                Err(runtime_err) => {
+                    lox_error(runtime_err.0, runtime_err.1.into());
+                    had_runtime_error = true;
+                },
+            }
+        }
+        had_runtime_error
+    }
+
+    fn execute(&self, stmt: &Stmt) -> Result<(), RuntimeErrTup> {
+        match stmt {
+            Stmt::Expression { expr } => {
+                match self.evaluate(expr) {
+                    Ok(_) => Ok(()),
+                    Err(err) => Err(err),
+                }
             },
-            Err(runtime_err) => {
-                lox_error(runtime_err.0, runtime_err.1.into());
-                true
+            Stmt::Print { expr } => {
+                match self.evaluate(expr) {
+                    Ok(val) => {
+                        self.stringify(&val);
+                        Ok(())
+                    },
+                    Err(err) => Err(err),
+                }
             },
+            Stmt::Var { name, initializer } => todo!(),
         }
     }
 
@@ -96,7 +119,11 @@ impl<'a> Interpreter<'a> {
                     },
                     TokenType::Slash => {
                         if let LiteralValue::NumberValue(lhs_num) = lhs_value && let LiteralValue::NumberValue(rhs_num) = rhs_value {
-                            Ok(LiteralValue::NumberValue(lhs_num / rhs_num))
+                            if (rhs_num - 0.0).abs() < EPSILON {
+                                Err(RuntimeErrTup(operator.line, RuntimeError::DivisionByZeroError))
+                            } else {
+                                Ok(LiteralValue::NumberValue(lhs_num / rhs_num))
+                            }
                         } else {
                             Err(RuntimeErrTup(operator.line, RuntimeError::InvalidBinaryOperandsError))
                         }
@@ -156,7 +183,8 @@ impl<'a> Interpreter<'a> {
                     },
                     _ => unreachable!(),
                 }
-            }
+            },
+            Expr::Variable { name } => todo!(),
         }
     }
 
