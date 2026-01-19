@@ -10,7 +10,7 @@ pub enum Stmt {
         expr: Box<Expr>,
     },
     Var {
-        name: Token,
+        token: Token,
         initializer: Option<Box<Expr>>,
     },
 }

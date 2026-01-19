@@ -18,7 +18,13 @@ impl<'a> AstPrinter<'a> {
             match stmt.as_ref() {
                 Stmt::Expression { expr } | Stmt::Print { expr }
                     => println!("{}", self.visit_expr(expr)),
-                Stmt::Var { name, initializer } => todo!(),
+                Stmt::Var { token, initializer } => {
+                    let init: String = match initializer {
+                        Some(expr) => self.visit_expr(expr),
+                        None => "nil".to_string(),
+                    };
+                    println!("{} -> {}", self.get_lexeme(token.start, token.end), init);
+                },
             }
         }
     }
@@ -46,7 +52,7 @@ impl<'a> AstPrinter<'a> {
                 let lexeme: String = self.get_lexeme(operator.start, operator.end);
                 self.parenthesize(lexeme, &[right.as_ref()])
             },
-            Expr::Variable { name } => todo!(),
+            Expr::Variable { token } => todo!(),
         }
     }
 

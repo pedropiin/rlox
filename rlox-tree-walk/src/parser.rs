@@ -1,6 +1,6 @@
 use core::panic;
 
-use crate::token::{self, Token};
+use crate::token::Token;
 use crate::token::TokenType::{self, *};
 use crate::expr::Expr;
 use crate::stmt::Stmt;
@@ -31,15 +31,15 @@ impl<'a> Parser<'a> {
     }
 
     fn declaration(&mut self) -> Option<Box<Stmt>> {
-        todo!("Deal with syntax and parser errors, that may be returned/found");
         let result = 
-        if self.match_token(&[Var]) {
-            self.var_declaration()
-        } else { self.statement() };
+            if self.match_token(&[Var]) {
+                self.var_declaration()
+            } else { self.statement() };
 
         match result {
             Ok(stmt) => Some(stmt),
-            Err(_) => {
+            Err(parser_err) => {
+                lox_error(parser_err.0, parser_err.1.into());
                 self.synchronize();
                 None
             }
@@ -50,10 +50,10 @@ impl<'a> Parser<'a> {
         let name: Token = self.consume(Identifier, ParserError::NamelessVarDeclaration)?;
 
         let mut initializer: Option<Box<Expr>> = None;
-        if self.match_token(&[Equal]) { initializer = Some(self.expression()) }
+        if self.match_token(&[Equal]) { initializer = Some(self.expression()?) }
 
         self.consume(Semicolon, ParserError::SemicolonExpected)?;
-        Ok(Box::new(Stmt::Var { name: name, initializer: initializer }))
+        Ok(Box::new(Stmt::Var { token: name, initializer: initializer }))
     }
 
     fn statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {
@@ -64,110 +64,109 @@ impl<'a> Parser<'a> {
     }
 
     fn expr_statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {
-        let expr: Box<Expr> = self.expression();
+        let expr: Box<Expr> = self.expression()?;
         self.consume(Semicolon, ParserError::SemicolonExpected)?;
 
         Ok(Box::new(Stmt::Expression { expr: expr }))
     }
 
     fn print_statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {
-        let expr: Box<Expr> = self.expression();
+        let expr: Box<Expr> = self.expression()?;
         self.consume(Semicolon, ParserError::SemicolonExpected)?;
         
         Ok(Box::new(Stmt::Print { expr: expr }))
     }
 
-    fn expression(&mut self) -> Box<Expr> {
+    fn expression(&mut self) -> Result<Box<Expr>, ParserErrTup> {
         self.equality()
     }
 
-    fn equality(&mut self) -> Box<Expr> {
-        let mut expr: Box<Expr> = self.comparison();
+    fn equality(&mut self) -> Result<Box<Expr>, ParserErrTup> {
+        let mut expr: Box<Expr> = self.comparison()?;
         
         while self.match_token(&[BangEqual, EqualEqual]) {
             let op: Token = self.previous();
-            let rhs: Box<Expr> = self.comparison();
+            let rhs: Box<Expr> = self.comparison()?;
             expr = Box::new(Expr::Binary { left: expr, operator: op, right: rhs });
         }
 
-        expr
+        Ok(expr)
     }
 
-    fn comparison(&mut self) -> Box<Expr> {
-        let mut expr: Box<Expr> = self.term();
+    fn comparison(&mut self) -> Result<Box<Expr>, ParserErrTup> {
+        let mut expr: Box<Expr> = self.term()?;
 
         while self.match_token(&[Greater, GreaterEqual, Less, LessEqual]) {
             let op: Token = self.previous();
-            let rhs: Box<Expr> = self.term();
+            let rhs: Box<Expr> = self.term()?;
             expr = Box::new(Expr::Binary { left: expr, operator: op, right: rhs });
         }
 
-        expr
+        Ok(expr)
     }
 
-    fn term(&mut self) -> Box<Expr> {
-        let mut expr: Box<Expr> = self.factor();
+    fn term(&mut self) -> Result<Box<Expr>, ParserErrTup> {
+        let mut expr: Box<Expr> = self.factor()?;
 
         while self.match_token(&[Minus, Plus]) {
             let op: Token = self.previous();
-            let rhs: Box<Expr> = self.factor();
+            let rhs: Box<Expr> = self.factor()?;
             expr = Box::new(Expr::Binary { left: expr, operator: op, right: rhs });
         }
 
-        expr
+        Ok(expr)
     }
 
-    fn factor(&mut self) -> Box<Expr> {
-        let mut expr: Box<Expr> = self.unary();
+    fn factor(&mut self) -> Result<Box<Expr>, ParserErrTup> {
+        let mut expr: Box<Expr> = self.unary()?;
 
         while self.match_token(&[Slash, Star]) {
             let op: Token = self.previous();
-            let rhs: Box<Expr> = self.unary();
+            let rhs: Box<Expr> = self.unary()?;
             expr = Box::new(Expr::Binary { left: expr, operator: op, right: rhs });
         }
 
-        expr
+        Ok(expr)
     }
 
-    fn unary(&mut self) -> Box<Expr> {
+    fn unary(&mut self) -> Result<Box<Expr>, ParserErrTup> {
         if self.match_token(&[Bang, Minus]) {
             let op: Token = self.previous();
-            let rhs: Box<Expr> =  self.unary();
-            return Box::new(Expr::Unary { operator: op, right: rhs });
+            let rhs: Box<Expr> =  self.unary()?;
+            return Ok(Box::new(Expr::Unary { operator: op, right: rhs }))
         }
 
         self.primary()
     }
 
-    fn primary(&mut self) -> Box<Expr> { 
+    fn primary(&mut self) -> Result<Box<Expr>, ParserErrTup> { 
         if self.match_token(&[False]) {
-            return Box::new(Expr::Literal { value: LiteralObject::BooleanLiteral { value: false }})
+            return Ok(Box::new(Expr::Literal { value: LiteralObject::BooleanLiteral { value: false }}))
         } else if self.match_token(&[True]) {
-            return Box::new(Expr::Literal { value: LiteralObject::BooleanLiteral { value: true }});
+            return Ok(Box::new(Expr::Literal { value: LiteralObject::BooleanLiteral { value: true }}))
         } else if self.match_token(&[Nil]) {
-            return Box::new(Expr::Literal { value: LiteralObject::NilLiteral })
+            return Ok(Box::new(Expr::Literal { value: LiteralObject::NilLiteral }))
         }
 
         if self.match_token(&[Number]) {
             let tok = self.previous();
-            return Box::new(Expr::Literal { value: LiteralObject::NumberLiteral { start: tok.start , end: tok.end }})
+            return Ok(Box::new(Expr::Literal { value: LiteralObject::NumberLiteral { start: tok.start , end: tok.end }}))
         } else if self.match_token(&[Str]) {
             let tok: Token = self.previous();
-            return Box::new(Expr::Literal { value: LiteralObject::StringLiteral { start: tok.start, end: tok.end } })
+            return Ok(Box::new(Expr::Literal { value: LiteralObject::StringLiteral { start: tok.start, end: tok.end } }))
         }
 
         if self.match_token(&[Identifier]) {
-            return Box::new(Expr::Variable { name: self.previous() })
+            return Ok(Box::new(Expr::Variable { token: self.previous() }))
         }
 
         if self.match_token(&[LeftParen]) {
-            let expr: Box<Expr> = self.expression();
-            self.consume(RightParen, ParserError::UnclosedParen);
-            return Box::new(Expr::Grouping { expression: expr })
+            let expr: Box<Expr> = self.expression()?;
+            self.consume(RightParen, ParserError::UnclosedParen)?;
+            return Ok(Box::new(Expr::Grouping { expression: expr }))
         }
 
-        lox_error((self.previous()).line, ParserError::PrimaryExprExpected.into());
-        panic!();
+        Err(ParserErrTup(self.previous().line, ParserError::PrimaryExprExpected))
     }
 
     fn match_token(&mut self, tokens: &[TokenType]) -> bool {

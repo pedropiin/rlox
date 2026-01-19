@@ -5,7 +5,6 @@ use std::io::{self, Write};
 
 use crate::token::Token;
 use crate::lexer::Lexer;
-use crate::expr::Expr;
 use crate::stmt::Stmt;
 use crate::parser::Parser;
 use crate::ast_pretty_printer::AstPrinter;
@@ -32,13 +31,13 @@ fn run(source: &str) -> bool {
     let mut parser: Parser = Parser::new(source, &mut tokens);
     let stmts: Vec<Box<Stmt>> = parser.parse();
 
-    let interpreter: Interpreter = Interpreter::new(source, &tokens);
+    let mut interpreter: Interpreter = Interpreter::new(source);
     let had_runtime_error: bool = interpreter.interpret(&stmts);
 
     if had_error || had_runtime_error { return had_error }
 
-    let ast_printer: AstPrinter = AstPrinter::new(source, &tokens);
-    ast_printer.print(&stmts);
+    // let ast_printer: AstPrinter = AstPrinter::new(source, &tokens);
+    // ast_printer.print(&stmts);
 
     had_error
 }

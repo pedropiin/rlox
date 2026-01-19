@@ -1,3 +1,7 @@
+use std::collections::btree_map::Entry;
+
+use fnv::FnvHashMap;
+
 use crate::token::{Token, TokenType};
 use crate::expr::{Expr, LiteralObject};
 use crate::stmt::Stmt;
@@ -7,6 +11,7 @@ const EPSILON: f32 = 1e-6;
 
 pub struct RuntimeErrTup(usize, RuntimeError);
 
+#[derive(Debug, Clone)]
 pub enum LiteralValue {
     StringValue(String),
     NumberValue(f32),
@@ -16,15 +21,18 @@ pub enum LiteralValue {
 
 pub struct Interpreter<'a> {
     source: &'a str, 
-    tokens: &'a Vec<Token>,
+    variables: Environment,
 }
 
 impl<'a> Interpreter<'a> {
-    pub fn new(source: &'a str, tokens: &'a Vec<Token>) -> Interpreter<'a> {
-        Interpreter { source: source, tokens: tokens }
+    pub fn new(source: &'a str) -> Interpreter<'a> {
+        Interpreter { 
+            source: source, 
+            variables: Environment::new() 
+        }
     }
 
-    pub fn interpret(&self, stmts: &Vec<Box<Stmt>>) -> bool {
+    pub fn interpret(&mut self, stmts: &Vec<Box<Stmt>>) -> bool {
         let mut had_runtime_error: bool = false;
         for stmt in stmts {
             match self.execute(stmt) {
@@ -38,7 +46,7 @@ impl<'a> Interpreter<'a> {
         had_runtime_error
     }
 
-    fn execute(&self, stmt: &Stmt) -> Result<(), RuntimeErrTup> {
+    fn execute(&mut self, stmt: &Stmt) -> Result<(), RuntimeErrTup> {
         match stmt {
             Stmt::Expression { expr } => {
                 match self.evaluate(expr) {
@@ -55,7 +63,15 @@ impl<'a> Interpreter<'a> {
                     Err(err) => Err(err),
                 }
             },
-            Stmt::Var { name, initializer } => todo!(),
+            Stmt::Var { token, initializer } => {
+                let init_value = match initializer {
+                    Some(expr) => self.evaluate(expr)?,
+                    None => LiteralValue::NilValue,
+                };
+                let var_name: String = self.get_lexeme(token.start, token.end).to_string();
+                self.variables.define(var_name, init_value);
+                Ok(())
+            },
         }
     }
 
@@ -137,7 +153,7 @@ impl<'a> Interpreter<'a> {
                     },
                     TokenType::Plus => {
                         if let LiteralValue::NumberValue(lhs_num) = lhs_value && let LiteralValue::NumberValue(rhs_num) = rhs_value {
-                            Ok(LiteralValue::NumberValue(lhs_num * rhs_num))
+                            Ok(LiteralValue::NumberValue(lhs_num + rhs_num))
                         }  else if let LiteralValue::StringValue(lhs_str) = lhs_value && let LiteralValue::StringValue(rhs_str) = rhs_value {
                             Ok(LiteralValue::StringValue(format!("{lhs_str}{rhs_str}")))
                         } else {
@@ -184,7 +200,13 @@ impl<'a> Interpreter<'a> {
                     _ => unreachable!(),
                 }
             },
-            Expr::Variable { name } => todo!(),
+            Expr::Variable { token } => {
+                let var_name: &str = self.get_lexeme(token.start, token.end);
+                match self.variables.get(var_name) {
+                    Some(val) => Ok(val),
+                    None => Err(RuntimeErrTup(token.line, RuntimeError::UndefinedVariableError(var_name.to_string())))
+                }
+            },
         }
     }
 
@@ -239,5 +261,23 @@ impl<'a> Interpreter<'a> {
 
     fn get_lexeme(&self, start: usize, end: usize) -> &str {
         &self.source[start..end]
+    }
+}
+
+struct Environment {
+    variables: FnvHashMap<String, LiteralValue>,
+}
+
+impl Environment {
+    pub fn new() -> Environment {
+        Environment { variables: FnvHashMap::default() }
+    }
+
+    pub fn define(&mut self, name: String, value: LiteralValue) -> () {
+        self.variables.insert(name, value);
+    }
+
+    pub fn get(&self, name: &str) -> Option<LiteralValue> {
+        self.variables.get(name).cloned()
     }
 }

@@ -84,6 +84,7 @@ pub enum RuntimeError {
     InvalidBinaryOperandsError,
     InvalidSumOperandsError,
     DivisionByZeroError,
+    UndefinedVariableError(String),
 }
 
 impl RuntimeError {
@@ -97,6 +98,8 @@ impl RuntimeError {
                 => "Both operands must be either a number or a string.".to_string(),
             RuntimeError::DivisionByZeroError
                 => "Cannot divide by zero.".to_string(),
+            RuntimeError::UndefinedVariableError(var_name)
+                => format!("Undefined variable '{var_name}'.")
         }
     }
 }
