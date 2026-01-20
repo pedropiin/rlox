@@ -1,11 +1,9 @@
-use std::collections::btree_map::Entry;
-
 use fnv::FnvHashMap;
 
-use crate::token::{Token, TokenType};
+use crate::token::{TokenType};
 use crate::expr::{Expr, LiteralObject};
 use crate::stmt::Stmt;
-use crate::errors::{LoxError, RuntimeError, lox_error};
+use crate::errors::{RuntimeError, lox_error};
 
 const EPSILON: f32 = 1e-6;
 
@@ -72,10 +70,34 @@ impl<'a> Interpreter<'a> {
                 self.variables.define(var_name, init_value);
                 Ok(())
             },
+            Stmt::Block { statements } => {
+                let local_env: Environment = Environment::new_local(Box::new(self.variables.clone()));
+                self.execute_block(statements, local_env)
+            },
         }
     }
 
-    fn evaluate(&self, expr: &Expr) -> Result<LiteralValue, RuntimeErrTup> {
+    fn execute_block(&mut self, statements: &Vec<Box<Stmt>>, environment: Environment) -> Result<(), RuntimeErrTup> {
+        let previous_env = self.variables.clone();
+
+        self.variables = environment;
+        let mut error: Option<RuntimeErrTup> = None;
+        for stmt in statements {
+            match self.execute(stmt) {
+                Ok(_) => (),
+                Err(err) => {
+                    error = Some(err);
+                    break;
+                },
+            }
+        }
+        
+        self.variables = previous_env;
+        if let Some(err) = error { return Err(err) }
+        Ok(())
+    }
+
+    fn evaluate(&mut self, expr: &Expr) -> Result<LiteralValue, RuntimeErrTup> {
         match expr {
             Expr::Literal { value} => {
                 match value {
@@ -207,6 +229,14 @@ impl<'a> Interpreter<'a> {
                     None => Err(RuntimeErrTup(token.line, RuntimeError::UndefinedVariableError(var_name.to_string())))
                 }
             },
+            Expr::Assign { token, value } => {
+                let rvalue = self.evaluate(value)?;
+                let lvalue_name: String = self.get_lexeme(token.start, token.end).to_string();
+                match self.variables.assign(lvalue_name, rvalue.clone()) {
+                    Ok(_) => Ok(rvalue),
+                    Err(err) => Err(RuntimeErrTup(token.line, err))
+                }
+            }
         }
     }
 
@@ -264,13 +294,19 @@ impl<'a> Interpreter<'a> {
     }
 }
 
+#[derive(Clone)]
 struct Environment {
     variables: FnvHashMap<String, LiteralValue>,
+    enclosing: Option<Box<Environment>>,
 }
 
 impl Environment {
     pub fn new() -> Environment {
-        Environment { variables: FnvHashMap::default() }
+        Environment { variables: FnvHashMap::default(), enclosing: None }
+    }
+
+    pub fn new_local(enclosing: Box<Environment>) -> Environment {
+        Environment { variables: FnvHashMap::default(), enclosing: Some(enclosing) }
     }
 
     pub fn define(&mut self, name: String, value: LiteralValue) -> () {
@@ -278,6 +314,25 @@ impl Environment {
     }
 
     pub fn get(&self, name: &str) -> Option<LiteralValue> {
-        self.variables.get(name).cloned()
+        if self.variables.contains_key(name) {
+            return self.variables.get(name).cloned()
+        } else {
+            if let Some(ref env) = self.enclosing {
+                return env.get(name)
+            }
+            None
+        }
+    }
+
+    pub fn assign(&mut self, name: String, value: LiteralValue) -> Result<(), RuntimeError> {
+        if let Some(val) = self.variables.get_mut(&name) {
+            *val = value;
+            return Ok(())
+        } else {
+            if let Some(ref mut env) = self.enclosing {
+                return env.assign(name, value)
+            }            
+        }
+        Err(RuntimeError::UndefinedVariableError(name))
     }
 }

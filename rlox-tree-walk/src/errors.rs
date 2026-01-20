@@ -1,7 +1,9 @@
+use crate::parser::Parser;
+
 // Main error handling method
 pub fn lox_error(line: usize, error_type: LoxError) {
     fn report(line: usize, locale: &str, error_type: LoxError) {
-        eprintln!("[line {}] Error {}: {}", line, locale, error_type.message());
+        eprintln!("[line {}] {}{}: {}", line, error_type.name(), locale, error_type.message());
     }
     report(line, "", error_type);
 }
@@ -21,6 +23,14 @@ impl LoxError {
             LoxError::RuntimeErr(r) => r.message(),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self {
+            LoxError::LexerErr(l) => l.name(),
+            LoxError::ParserErr(p) => p.name(),
+            LoxError::RuntimeErr(r) => r.name(),
+        }
+    }
 }
 
 // All lexer/tokenizer errors
@@ -38,6 +48,15 @@ impl LexerError {
                 => "Unterminated string.".to_string(),
         }
     }
+
+    pub fn name(&self) -> String {
+        match self {
+            LexerError::InvalidChar(_) 
+                => "InvalidCharError".to_string(),
+            LexerError::UnterminatedString
+                => "UnterminatedStringError".to_string(),
+        }
+    }
 }
 
 impl From<LexerError> for LoxError {
@@ -53,6 +72,8 @@ pub enum ParserError {
     PrimaryExprExpected,
     SemicolonExpected,
     NamelessVarDeclaration,
+    InvalidAssignment,
+    RightBraceExpected,
 }
 
 impl ParserError {
@@ -68,6 +89,29 @@ impl ParserError {
                 => "Expected ';' after expression.".to_string(),
             ParserError::NamelessVarDeclaration
                 => "Expected a variable name.".to_string(),
+            ParserError::InvalidAssignment
+                => "Invalid assignment target.".to_string(),
+            ParserError::RightBraceExpected
+                => "Expected '}' after block".to_string(),
+        }
+    }
+
+    pub fn name(&self) -> String {
+        match self {
+            ParserError::TokenPeekError
+                => "TokenPeekError".to_string(),
+            ParserError::UnclosedParen
+                => "UnclosedParen".to_string(),
+            ParserError::PrimaryExprExpected
+                => "PrimaryExprExpected".to_string(),
+            ParserError::SemicolonExpected
+                => "SemicolonExpected".to_string(),
+            ParserError::NamelessVarDeclaration
+                => "NamelessVarDeclaration".to_string(),
+            ParserError::InvalidAssignment
+                => "InvalidAssignment".to_string(),
+            ParserError::RightBraceExpected
+                => "RightBraceExpected".to_string()
         }
     }
 }
@@ -100,6 +144,21 @@ impl RuntimeError {
                 => "Cannot divide by zero.".to_string(),
             RuntimeError::UndefinedVariableError(var_name)
                 => format!("Undefined variable '{var_name}'.")
+        }
+    }
+
+    pub fn name(&self) -> String {
+        match self {
+            RuntimeError::InvalidUnaryOperandError
+                => "InvalidUnaryOperandError".to_string(),
+            RuntimeError::InvalidBinaryOperandsError
+                => "InvalidBinaryOperandsError".to_string(),
+            RuntimeError::InvalidSumOperandsError
+                => "InvalidSumOperandsError".to_string(),
+            RuntimeError::DivisionByZeroError
+                => "DivisionByZeroError".to_string(),
+            RuntimeError::UndefinedVariableError(_)
+                => "UndefinedVariableError".to_string(),
         }
     }
 }

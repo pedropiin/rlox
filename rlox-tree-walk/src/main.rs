@@ -28,7 +28,7 @@ fn run(source: &str) -> bool {
     //     println!("{}", tok);
     // }
 
-    let mut parser: Parser = Parser::new(source, &mut tokens);
+    let mut parser: Parser = Parser::new(&mut tokens);
     let stmts: Vec<Box<Stmt>> = parser.parse();
 
     let mut interpreter: Interpreter = Interpreter::new(source);

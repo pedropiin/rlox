@@ -4,20 +4,19 @@ use crate::token::Token;
 use crate::token::TokenType::{self, *};
 use crate::expr::Expr;
 use crate::stmt::Stmt;
-use crate::expr::LiteralObject::{self, *};
+use crate::expr::LiteralObject::{self};
 use crate::errors::{ParserError, lox_error};
 
 struct ParserErrTup(usize, ParserError);
 
 pub struct Parser<'a> {
-    source: &'a str,
     tokens: &'a mut Vec<Token>,
     current: usize,
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(source: &'a str, tokens: &'a mut Vec<Token>) -> Parser<'a> {
-        Parser { source, tokens, current: 0 }
+    pub fn new(tokens: &'a mut Vec<Token>) -> Parser<'a> {
+        Parser { tokens, current: 0 }
     }
 
     pub fn parse(&mut self) -> Vec<Box<Stmt>> {
@@ -60,25 +59,60 @@ impl<'a> Parser<'a> {
         if self.match_token(&[Print]) {
             return self.print_statement()
         } 
+        if self.match_token(&[LeftBrace]) {
+            return Ok(Box::new(Stmt::Block { statements: self.block()? }))
+        }
         self.expr_statement()
     }
-
+    
     fn expr_statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {
         let expr: Box<Expr> = self.expression()?;
         self.consume(Semicolon, ParserError::SemicolonExpected)?;
-
+        
         Ok(Box::new(Stmt::Expression { expr: expr }))
     }
 
+    fn block(&mut self) -> Result<Vec<Box<Stmt>>, ParserErrTup> {
+        let mut statements: Vec<Box<Stmt>> = vec![];
+
+        while !self.check(RightBrace) && !self.is_at_end() {
+            if let Some(stmt) = self.declaration() {
+                statements.push(stmt);
+            }
+        }
+
+        self.consume(RightBrace, ParserError::RightBraceExpected)?;
+        Ok(statements)
+    }
+    
     fn print_statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {
         let expr: Box<Expr> = self.expression()?;
         self.consume(Semicolon, ParserError::SemicolonExpected)?;
         
         Ok(Box::new(Stmt::Print { expr: expr }))
     }
-
+    
     fn expression(&mut self) -> Result<Box<Expr>, ParserErrTup> {
-        self.equality()
+        self.assignment()
+    }
+
+    fn assignment(&mut self) -> Result<Box<Expr>, ParserErrTup> {
+        let lvalue_expr = self.equality()?;
+
+        if self.match_token(&[Equal]) {
+            let equals: Token = self.previous();
+            let value: Box<Expr> = self.assignment()?;
+
+            if let Expr::Variable { token } = value.as_ref() {
+                return Ok(Box::new(Expr::Assign { token: *token, value: value }))
+            }
+
+            // No need to return early and synchronize, as there's no need to panic.
+            // The remaining of the script can (possibly) run.
+            lox_error(equals.line, ParserError::InvalidAssignment.into());
+        }
+
+        Ok(lvalue_expr)
     }
 
     fn equality(&mut self) -> Result<Box<Expr>, ParserErrTup> {
@@ -171,7 +205,7 @@ impl<'a> Parser<'a> {
 
     fn match_token(&mut self, tokens: &[TokenType]) -> bool {
         for token_type in tokens {
-            if self.check(token_type) {
+            if self.check(*token_type) {
                 self.advance();
                 return true
             }
@@ -180,9 +214,9 @@ impl<'a> Parser<'a> {
         false
     }
 
-    fn check(&self, token_type: &TokenType) -> bool {
+    fn check(&self, token_type: TokenType) -> bool {
         if self.is_at_end() { return false }
-        self.peek().token_type == *token_type
+        self.peek().token_type == token_type
     }
 
     fn advance(&mut self) -> Token {
@@ -204,7 +238,7 @@ impl<'a> Parser<'a> {
     }
 
     fn consume(&mut self, token_type: TokenType, err: ParserError) -> Result<Token, ParserErrTup> {
-        if self.check(&token_type) {
+        if self.check(token_type) {
             return Ok(self.advance())
         } 
         Err(ParserErrTup(self.previous().line, err))

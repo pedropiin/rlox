@@ -13,4 +13,7 @@ pub enum Stmt {
         token: Token,
         initializer: Option<Box<Expr>>,
     },
+    Block {
+        statements: Vec<Box<Stmt>>,
+    },
 }
