@@ -7,26 +7,28 @@ use crate::stmt::Stmt;
 use crate::expr::LiteralObject::{self};
 use crate::errors::{ParserError, lox_error};
 
+#[derive(Clone)]
 struct ParserErrTup(usize, ParserError);
 
 pub struct Parser<'a> {
     tokens: &'a mut Vec<Token>,
+    stmts: &'a mut Vec<Box<Stmt>>,
     current: usize,
+    had_error: bool,
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(tokens: &'a mut Vec<Token>) -> Parser<'a> {
-        Parser { tokens, current: 0 }
+    pub fn new(tokens: &'a mut Vec<Token>, stmts: &'a mut Vec<Box<Stmt>>) -> Parser<'a> {
+        Parser { tokens, stmts, current: 0, had_error: false }
     }
 
-    pub fn parse(&mut self) -> Vec<Box<Stmt>> {
-        let mut stmts: Vec<Box<Stmt>> = vec![];
+    pub fn parse(&mut self) -> bool {
         while !self.is_at_end() {
-            if let Some(stmt) = self.declaration(){
-                stmts.push(stmt);
+            if let Some(stmt) = self.declaration() {
+                self.stmts.push(stmt);
             }
         }
-        stmts
+        self.had_error
     }
 
     fn declaration(&mut self) -> Option<Box<Stmt>> {
@@ -38,7 +40,9 @@ impl<'a> Parser<'a> {
         match result {
             Ok(stmt) => Some(stmt),
             Err(parser_err) => {
+                let lçakjsdf = parser_err.clone();
                 lox_error(parser_err.0, parser_err.1.into());
+                self.had_error = true;
                 self.synchronize();
                 None
             }
@@ -103,13 +107,14 @@ impl<'a> Parser<'a> {
             let equals: Token = self.previous();
             let value: Box<Expr> = self.assignment()?;
 
-            if let Expr::Variable { token } = value.as_ref() {
+            if let Expr::Variable { token } = lvalue_expr.as_ref() {
                 return Ok(Box::new(Expr::Assign { token: *token, value: value }))
             }
 
             // No need to return early and synchronize, as there's no need to panic.
             // The remaining of the script can (possibly) run.
             lox_error(equals.line, ParserError::InvalidAssignment.into());
+            self.had_error = true;
         }
 
         Ok(lvalue_expr)

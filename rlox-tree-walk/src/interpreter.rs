@@ -17,23 +17,23 @@ pub enum LiteralValue {
     NilValue,
 }
 
-pub struct Interpreter<'a> {
-    source: &'a str, 
+pub struct Interpreter {
+    // pub source: &'a str, 
     variables: Environment,
 }
 
-impl<'a> Interpreter<'a> {
-    pub fn new(source: &'a str) -> Interpreter<'a> {
+impl Interpreter {
+    pub fn new() -> Interpreter {
         Interpreter { 
-            source: source, 
+            // source: source, 
             variables: Environment::new() 
         }
     }
 
-    pub fn interpret(&mut self, stmts: &Vec<Box<Stmt>>) -> bool {
+    pub fn interpret<'a>(&mut self, stmts: &Vec<Box<Stmt>>, source: &'a str) -> bool {
         let mut had_runtime_error: bool = false;
         for stmt in stmts {
-            match self.execute(stmt) {
+            match self.execute(stmt, source) {
                 Ok(()) => (),
                 Err(runtime_err) => {
                     lox_error(runtime_err.0, runtime_err.1.into());
@@ -44,16 +44,16 @@ impl<'a> Interpreter<'a> {
         had_runtime_error
     }
 
-    fn execute(&mut self, stmt: &Stmt) -> Result<(), RuntimeErrTup> {
+    fn execute<'a>(&mut self, stmt: &Stmt, source: &'a str) -> Result<(), RuntimeErrTup> {
         match stmt {
             Stmt::Expression { expr } => {
-                match self.evaluate(expr) {
+                match self.evaluate(expr, source) {
                     Ok(_) => Ok(()),
                     Err(err) => Err(err),
                 }
             },
             Stmt::Print { expr } => {
-                match self.evaluate(expr) {
+                match self.evaluate(expr, source) {
                     Ok(val) => {
                         self.stringify(&val);
                         Ok(())
@@ -63,27 +63,27 @@ impl<'a> Interpreter<'a> {
             },
             Stmt::Var { token, initializer } => {
                 let init_value = match initializer {
-                    Some(expr) => self.evaluate(expr)?,
+                    Some(expr) => self.evaluate(expr, source)?,
                     None => LiteralValue::NilValue,
                 };
-                let var_name: String = self.get_lexeme(token.start, token.end).to_string();
+                let var_name: String = self.get_lexeme(token.start, token.end, source).to_string();
                 self.variables.define(var_name, init_value);
                 Ok(())
             },
             Stmt::Block { statements } => {
                 let local_env: Environment = Environment::new_local(Box::new(self.variables.clone()));
-                self.execute_block(statements, local_env)
+                self.execute_block(statements, local_env, source)
             },
         }
     }
 
-    fn execute_block(&mut self, statements: &Vec<Box<Stmt>>, environment: Environment) -> Result<(), RuntimeErrTup> {
+    fn execute_block<'a>(&mut self, statements: &Vec<Box<Stmt>>, environment: Environment, source: &'a str) -> Result<(), RuntimeErrTup> {
         let previous_env = self.variables.clone();
 
         self.variables = environment;
         let mut error: Option<RuntimeErrTup> = None;
         for stmt in statements {
-            match self.execute(stmt) {
+            match self.execute(stmt, source) {
                 Ok(_) => (),
                 Err(err) => {
                     error = Some(err);
@@ -97,19 +97,19 @@ impl<'a> Interpreter<'a> {
         Ok(())
     }
 
-    fn evaluate(&mut self, expr: &Expr) -> Result<LiteralValue, RuntimeErrTup> {
+    fn evaluate<'a>(&mut self, expr: &Expr, source: &'a str) -> Result<LiteralValue, RuntimeErrTup> {
         match expr {
             Expr::Literal { value} => {
                 match value {
                     LiteralObject::StringLiteral { start, end } =>  {
-                        Ok(LiteralValue::StringValue(self.get_lexeme(*start, *end).to_string()))
+                        Ok(LiteralValue::StringValue(self.get_lexeme(*start, *end, source).to_string()))
                     },
                     LiteralObject::NumberLiteral { start, end } => {
                         // if .unwrap() fails, it means that either 
                         // (1) tokenization or (2) parsing expressions failed,
                         // because if something else is stored inside a 
                         // "LiteralObject::NumberLiteral", it's not the users fault.
-                        Ok(LiteralValue::NumberValue(self.get_lexeme(*start, *end).parse::<f32>().unwrap()))
+                        Ok(LiteralValue::NumberValue(self.get_lexeme(*start, *end, source).parse::<f32>().unwrap()))
                     },
                     LiteralObject::BooleanLiteral { value } => {
                         Ok(LiteralValue::BooleanValue(*value))
@@ -123,10 +123,10 @@ impl<'a> Interpreter<'a> {
                 }
             },
             Expr::Grouping { expression } => {
-                self.evaluate(expression.as_ref())
+                self.evaluate(expression.as_ref(), source)
             },
             Expr::Unary { operator, right } => {
-                let rhs_value: LiteralValue = self.evaluate(right.as_ref())?;
+                let rhs_value: LiteralValue = self.evaluate(right.as_ref(), source)?;
 
                 match operator.token_type {
                     TokenType::Minus => {
@@ -143,8 +143,8 @@ impl<'a> Interpreter<'a> {
                 }
             },
             Expr::Binary { left, operator, right } => {
-                let lhs_value: LiteralValue = self.evaluate(left.as_ref())?;
-                let rhs_value: LiteralValue = self.evaluate(right.as_ref())?;
+                let lhs_value: LiteralValue = self.evaluate(left.as_ref(), source)?;
+                let rhs_value: LiteralValue = self.evaluate(right.as_ref(), source)?;
 
                 match operator.token_type {
                     // Arithmetic Operators
@@ -223,15 +223,15 @@ impl<'a> Interpreter<'a> {
                 }
             },
             Expr::Variable { token } => {
-                let var_name: &str = self.get_lexeme(token.start, token.end);
+                let var_name: &str = self.get_lexeme(token.start, token.end, source);
                 match self.variables.get(var_name) {
                     Some(val) => Ok(val),
                     None => Err(RuntimeErrTup(token.line, RuntimeError::UndefinedVariableError(var_name.to_string())))
                 }
             },
             Expr::Assign { token, value } => {
-                let rvalue = self.evaluate(value)?;
-                let lvalue_name: String = self.get_lexeme(token.start, token.end).to_string();
+                let rvalue = self.evaluate(value, source)?;
+                let lvalue_name: String = self.get_lexeme(token.start, token.end, source).to_string();
                 match self.variables.assign(lvalue_name, rvalue.clone()) {
                     Ok(_) => Ok(rvalue),
                     Err(err) => Err(RuntimeErrTup(token.line, err))
@@ -289,8 +289,8 @@ impl<'a> Interpreter<'a> {
         println!("{}", str_value);
     }
 
-    fn get_lexeme(&self, start: usize, end: usize) -> &str {
-        &self.source[start..end]
+    fn get_lexeme<'a>(&self, start: usize, end: usize, source: &'a str) -> &'a str {
+        &source[start..end]
     }
 }
 

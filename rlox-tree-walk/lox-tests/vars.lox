@@ -1,0 +1,19 @@
+var x = 2;
+var y = 3;
+print x * y;
+
+var z = 5;
+print x*y*z;
+
+x = 10;
+y = 15;
+z = 17.2;
+print x*y*z;
+
+print z = z/3;
+print z;
+
+x = "I'm a string. ";
+y = "I'm also a string. ";
+z = "I'm the final string.";
+print x+y+z;

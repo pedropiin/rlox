@@ -111,6 +111,7 @@ impl<'a> Lexer<'a> {
 
         if self.is_at_end() {
             lox_error(self.line, LexerError::UnterminatedString.into());
+            self.had_error = true;
             return;
         }
 

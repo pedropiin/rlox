@@ -16,35 +16,35 @@ mod expr;
 mod stmt;
 mod parser;
 mod errors;
+#[allow(dead_code)]
 mod ast_pretty_printer;
 mod interpreter;
 
-fn run(source: &str) -> bool {
+fn run<'a>(source: &'a str, interpreter: &'a mut Interpreter) -> bool {
     let mut tokens: Vec<Token> = Vec::new();
-    let mut scanner: Lexer = Lexer::new(source, &mut tokens);
-    let had_error: bool = scanner.scan_tokens(); 
+    let mut scanner: Lexer = Lexer::new(&source, &mut tokens);
+    let scanning_error: bool = scanner.scan_tokens(); 
 
-    // for tok in &tokens {
-    //     println!("{}", tok);
-    // }
+    let mut stmts: Vec<Box<Stmt>> = Vec::new();
+    let mut parser: Parser = Parser::new(&mut tokens, &mut stmts);
+    let parsing_error: bool = parser.parse();
 
-    let mut parser: Parser = Parser::new(&mut tokens);
-    let stmts: Vec<Box<Stmt>> = parser.parse();
+    if scanning_error || parsing_error { return true }
 
-    let mut interpreter: Interpreter = Interpreter::new(source);
-    let had_runtime_error: bool = interpreter.interpret(&stmts);
+    let had_runtime_error: bool = interpreter.interpret(&stmts, source);
 
-    if had_error || had_runtime_error { return had_error }
+    if had_runtime_error { return true }
 
     // let ast_printer: AstPrinter = AstPrinter::new(source, &tokens);
     // ast_printer.print(&stmts);
 
-    had_error
+    false
 }
 
 fn run_file(path: &String) {
     let contents: String = fs::read_to_string(&path).expect("Could not read/open source lox file.");
-    let had_error: bool = run(&contents);
+    let mut interpreter: Interpreter = Interpreter::new();
+    let had_error: bool = run(&contents, &mut interpreter);
 
     if had_error {
         process::exit(65);
@@ -52,12 +52,14 @@ fn run_file(path: &String) {
 }
 
 fn run_prompt() {
-    let mut input_buf: String = String::from("");
+    let mut interpreter: Interpreter = Interpreter::new();
+    let mut input_buf = String::from("");
     loop {
         print!("> ");
         io::stdout().flush().unwrap();
         io::stdin().read_line(&mut input_buf).unwrap();
-        run(&input_buf);
+        run(&input_buf, &mut interpreter);
+        input_buf.clear();
     }
 }
 

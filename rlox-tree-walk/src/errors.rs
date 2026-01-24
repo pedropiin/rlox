@@ -66,6 +66,7 @@ impl From<LexerError> for LoxError {
 }
 
 // All parser errors
+#[derive(Clone)]
 pub enum ParserError {
     TokenPeekError,
     UnclosedParen,
