@@ -40,7 +40,6 @@ impl<'a> Parser<'a> {
         match result {
             Ok(stmt) => Some(stmt),
             Err(parser_err) => {
-                let lçakjsdf = parser_err.clone();
                 lox_error(parser_err.0, parser_err.1.into());
                 self.had_error = true;
                 self.synchronize();

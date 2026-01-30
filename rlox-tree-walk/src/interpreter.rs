@@ -15,19 +15,18 @@ pub enum LiteralValue {
     NumberValue(f32),
     BooleanValue(bool),
     NilValue,
+    UninitializedValue,
 }
 
 pub struct Interpreter {
     // pub source: &'a str, 
     variables: Environment,
+    repl_mode: bool,
 }
 
 impl Interpreter {
-    pub fn new() -> Interpreter {
-        Interpreter { 
-            // source: source, 
-            variables: Environment::new() 
-        }
+    pub fn new(repl_mode: bool) -> Interpreter {
+        Interpreter { variables: Environment::new(), repl_mode: repl_mode }
     }
 
     pub fn interpret<'a>(&mut self, stmts: &Vec<Box<Stmt>>, source: &'a str) -> bool {
@@ -48,7 +47,10 @@ impl Interpreter {
         match stmt {
             Stmt::Expression { expr } => {
                 match self.evaluate(expr, source) {
-                    Ok(_) => Ok(()),
+                    Ok(res) => {
+                        if self.repl_mode { self.stringify(&res); }
+                        Ok(())
+                    },
                     Err(err) => Err(err),
                 }
             },
@@ -64,7 +66,7 @@ impl Interpreter {
             Stmt::Var { token, initializer } => {
                 let init_value = match initializer {
                     Some(expr) => self.evaluate(expr, source)?,
-                    None => LiteralValue::NilValue,
+                    None => LiteralValue::UninitializedValue,
                 };
                 let var_name: String = self.get_lexeme(token.start, token.end, source).to_string();
                 self.variables.define(var_name, init_value);
@@ -116,9 +118,6 @@ impl Interpreter {
                     },
                     LiteralObject::NilLiteral => {
                         Ok(LiteralValue::NilValue)
-                    },
-                    LiteralObject::IdentifierLiteral { start, end } => {
-                        todo!();
                     },
                 }
             },
@@ -215,18 +214,29 @@ impl Interpreter {
 
                     // Equality operators
                     TokenType::EqualEqual => {
-                        Ok(LiteralValue::BooleanValue(self.is_equal(&lhs_value, &rhs_value)))
+                        match self.is_equal(&lhs_value, &rhs_value) {
+                            Ok(b) => Ok(LiteralValue::BooleanValue(b)),
+                            Err(err) => Err(RuntimeErrTup(operator.line, err))
+                        }
                     },TokenType::BangEqual => {
-                        Ok(LiteralValue::BooleanValue(!self.is_equal(&lhs_value, &rhs_value)))
+                        match self.is_equal(&lhs_value, &rhs_value) {
+                            Ok(b) => Ok(LiteralValue::BooleanValue(!b)),
+                            Err(err) => Err(RuntimeErrTup(operator.line, err))
+                        }
                     },
-                    _ => unreachable!(),
+                    _ => unreachable!("A binary expression cannot contain any other TokenType."),
                 }
             },
             Expr::Variable { token } => {
                 let var_name: &str = self.get_lexeme(token.start, token.end, source);
                 match self.variables.get(var_name) {
-                    Some(val) => Ok(val),
-                    None => Err(RuntimeErrTup(token.line, RuntimeError::UndefinedVariableError(var_name.to_string())))
+                    Some(val) => {
+                        match val {
+                            LiteralValue::UninitializedValue => Err(RuntimeErrTup(token.line, RuntimeError::UninitializedVariableError)),
+                            _ => Ok(val),
+                        }
+                    },
+                    None => Err(RuntimeErrTup(token.line, RuntimeError::UndefinedVariableError(var_name.to_string()))),
                 }
             },
             Expr::Assign { token, value } => {
@@ -248,43 +258,47 @@ impl Interpreter {
         }
     }
 
-    fn is_equal(&self, lhs_val: &LiteralValue, rhs_val: &LiteralValue) -> bool {
+    fn is_equal(&self, lhs_val: &LiteralValue, rhs_val: &LiteralValue) -> Result<bool, RuntimeError> {
         match lhs_val {
             LiteralValue::NumberValue(lhs) => {
                 if let LiteralValue::NumberValue(rhs) = rhs_val {
-                    lhs == rhs
-                } else { false }
+                    Ok(lhs == rhs)
+                } else { Ok(false) }
             },
             LiteralValue::StringValue(lhs) => {
                 if let LiteralValue::StringValue(rhs) = rhs_val {
-                    lhs == rhs
-                } else { false }
+                    Ok(lhs == rhs)
+                } else { Ok(false) }
             },
             LiteralValue::BooleanValue(lhs) => {
                 if let LiteralValue::BooleanValue(rhs) = rhs_val {
-                    lhs == rhs
-                } else { false }
+                    Ok(lhs == rhs)
+                } else { Ok(false) }
             },
             LiteralValue::NilValue => {
-                if let LiteralValue::NilValue = rhs_val { true }
-                else { false }
-            }
+                if let LiteralValue::NilValue = rhs_val { Ok(true) }
+                else { Ok(false) }
+            },
+            LiteralValue::UninitializedValue => Err(RuntimeError::UninitializedVariableError),
         }
     }
 
     fn stringify(&self, value: &LiteralValue) -> () {
-        let str_value: String = match value {
+        let str_value = match value {
             LiteralValue::StringValue(s) => s.clone(),
             LiteralValue::NumberValue(num) => {
                 let str_num: String = num.to_string();
                 match str_num.strip_suffix(".0") {
-                    Some(s) => s.to_owned(),
+                    Some(s) => s.to_string(),
                     None => str_num,
                 }
                 
             },
             LiteralValue::BooleanValue(b) => b.to_string(),
-            LiteralValue::NilValue => "nil".to_owned(),
+            LiteralValue::NilValue => "nil".to_string(),
+            LiteralValue::UninitializedValue 
+                => unreachable!("Even though a print statement can be called with an uninitialized variable, 
+                                its evaluation will raise the error prior to the 'print' statement evaluation itself."),
         };
         println!("{}", str_value);
     }

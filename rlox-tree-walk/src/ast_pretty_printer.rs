@@ -1,5 +1,4 @@
 use crate::token::Token;
-use crate::token::TokenType::{self, *};
 use crate::expr::{Expr, LiteralObject};
 use crate::stmt::Stmt;
 
@@ -42,7 +41,6 @@ impl<'a> AstPrinter<'a> {
             Expr::Literal { value } => {
                 match value {
                     LiteralObject::StringLiteral { start, end } | 
-                    LiteralObject::IdentifierLiteral { start, end } | 
                     LiteralObject::NumberLiteral { start, end } => self.get_lexeme(*start, *end),
 
                     LiteralObject::BooleanLiteral { value } => value.to_string(),

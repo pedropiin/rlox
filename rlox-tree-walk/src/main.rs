@@ -16,7 +16,7 @@ mod expr;
 mod stmt;
 mod parser;
 mod errors;
-#[allow(dead_code)]
+#[allow(warnings)]
 mod ast_pretty_printer;
 mod interpreter;
 
@@ -43,7 +43,7 @@ fn run<'a>(source: &'a str, interpreter: &'a mut Interpreter) -> bool {
 
 fn run_file(path: &String) {
     let contents: String = fs::read_to_string(&path).expect("Could not read/open source lox file.");
-    let mut interpreter: Interpreter = Interpreter::new();
+    let mut interpreter: Interpreter = Interpreter::new(false);
     let had_error: bool = run(&contents, &mut interpreter);
 
     if had_error {
@@ -52,7 +52,7 @@ fn run_file(path: &String) {
 }
 
 fn run_prompt() {
-    let mut interpreter: Interpreter = Interpreter::new();
+    let mut interpreter: Interpreter = Interpreter::new(true);
     let mut input_buf = String::from("");
     loop {
         print!("> ");

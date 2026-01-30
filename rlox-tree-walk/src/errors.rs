@@ -1,5 +1,3 @@
-use crate::parser::Parser;
-
 // Main error handling method
 pub fn lox_error(line: usize, error_type: LoxError) {
     fn report(line: usize, locale: &str, error_type: LoxError) {
@@ -68,7 +66,6 @@ impl From<LexerError> for LoxError {
 // All parser errors
 #[derive(Clone)]
 pub enum ParserError {
-    TokenPeekError,
     UnclosedParen,
     PrimaryExprExpected,
     SemicolonExpected,
@@ -80,8 +77,6 @@ pub enum ParserError {
 impl ParserError {
     pub fn message(&self) -> String {
         match self {
-            ParserError::TokenPeekError 
-                => "Error when trying to get token from internal Vec<Token>.".to_string(),
             ParserError::UnclosedParen  
                 => "Expected ')' after expression.".to_string(),
             ParserError::PrimaryExprExpected 
@@ -99,8 +94,6 @@ impl ParserError {
 
     pub fn name(&self) -> String {
         match self {
-            ParserError::TokenPeekError
-                => "TokenPeekError".to_string(),
             ParserError::UnclosedParen
                 => "UnclosedParen".to_string(),
             ParserError::PrimaryExprExpected
@@ -130,6 +123,7 @@ pub enum RuntimeError {
     InvalidSumOperandsError,
     DivisionByZeroError,
     UndefinedVariableError(String),
+    UninitializedVariableError,
 }
 
 impl RuntimeError {
@@ -144,7 +138,9 @@ impl RuntimeError {
             RuntimeError::DivisionByZeroError
                 => "Cannot divide by zero.".to_string(),
             RuntimeError::UndefinedVariableError(var_name)
-                => format!("Undefined variable '{var_name}'.")
+                => format!("Undefined variable '{var_name}'."),
+            RuntimeError::UninitializedVariableError
+                => "Use of uninitialized variable".to_string(),
         }
     }
 
@@ -160,6 +156,8 @@ impl RuntimeError {
                 => "DivisionByZeroError".to_string(),
             RuntimeError::UndefinedVariableError(_)
                 => "UndefinedVariableError".to_string(),
+            RuntimeError::UninitializedVariableError
+                => "UninitializedVariableError".to_string(),
         }
     }
 }

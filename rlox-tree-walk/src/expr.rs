@@ -36,10 +36,6 @@ pub enum LiteralObject {
         start: usize, 
         end: usize,
     },
-    IdentifierLiteral {
-        start: usize,
-        end: usize,
-    },
     BooleanLiteral {
         value: bool,
     },
