@@ -24,7 +24,7 @@ impl<'a> AstPrinter<'a> {
                     };
                     println!("{} -> {}", self.get_lexeme(token.start, token.end), init);
                 },
-                Stmt::Block { statements } => todo!(),
+                _ => todo!(),
             }
         }
     }
@@ -51,8 +51,7 @@ impl<'a> AstPrinter<'a> {
                 let lexeme: String = self.get_lexeme(operator.start, operator.end);
                 self.parenthesize(lexeme, &[right.as_ref()])
             },
-            Expr::Variable { token } => todo!(),
-            Expr::Assign { token, value } => todo!(),
+            _ => todo!(),
         }
     }
 

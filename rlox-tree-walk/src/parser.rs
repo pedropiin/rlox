@@ -59,20 +59,93 @@ impl<'a> Parser<'a> {
     }
 
     fn statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {
+        if self.match_token(&[For]) {
+            return self.for_statement();
+        }
+        if self.match_token(&[If]) {
+            return self.if_statement();
+        }
         if self.match_token(&[Print]) {
             return self.print_statement()
         } 
+        if self.match_token(&[While]) {
+            return self.while_statement();
+        }
         if self.match_token(&[LeftBrace]) {
             return Ok(Box::new(Stmt::Block { statements: self.block()? }))
         }
         self.expr_statement()
     }
-    
-    fn expr_statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {
+
+    fn for_statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {
+        self.consume(LeftParen, ParserError::LeftParenControlFlowConditionExpected)?;
+
+        let initializer: Option<Box<Stmt>> = 
+            if self.match_token(&[Semicolon]) { 
+                None
+            } else if self.match_token(&[Var]) { 
+                Some(self.var_declaration()?)
+            } else { 
+                Some(self.expr_statement()?)
+            };
+
+        let condition: Box<Expr> = 
+            if !self.check(Semicolon) { 
+                self.expression()?
+            } else { 
+                Box::new(Expr::Literal { value: LiteralObject::BooleanLiteral { value: true } })
+            };
+        self.consume(Semicolon, ParserError::ForConditionSemicolonExpected)?;
+
+        let increment: Option<Box<Expr>> = 
+            if !self.check(RightParen) {
+                Some(self.expression()?)
+            } else {
+                None
+            };
+        self.consume(RightParen, ParserError::RightParenControlFlowConditionExpected)?;
+
+        let mut body: Box<Stmt> = self.statement()?;
+        if let Some(inc_expr) = increment {
+            body = Box::new(Stmt::Block { statements: vec![body, Box::new(Stmt::Expression { expr: inc_expr })] });
+        }
+        body = Box::new(Stmt::While { condition: condition, body });
+
+        if let Some(init_expr) = initializer {
+            Ok(Box::new(Stmt::Block { statements: vec![init_expr, body] }))
+        } else {
+            Ok(Box::new(Stmt::Block { statements: vec![body] }))
+        }
+    }
+
+    fn if_statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {
+        self.consume(LeftParen, ParserError::LeftParenControlFlowConditionExpected)?;
+        let condition: Box<Expr> = self.expression()?;
+        self.consume(RightParen, ParserError::RightParenControlFlowConditionExpected)?;
+
+        let then_branch: Box<Stmt> = self.statement()?;
+        let else_branch: Option<Box<Stmt>> = 
+            if self.match_token(&[Else]) { 
+                Some(self.statement()?) 
+            } else { None };
+
+        Ok(Box::new(Stmt::If { condition, then_branch, else_branch }))
+    }
+
+    fn print_statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {
         let expr: Box<Expr> = self.expression()?;
         self.consume(Semicolon, ParserError::SemicolonExpected)?;
         
-        Ok(Box::new(Stmt::Expression { expr: expr }))
+        Ok(Box::new(Stmt::Print { expr: expr }))
+    }
+
+    fn while_statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {
+        self.consume(LeftParen, ParserError::LeftParenControlFlowConditionExpected)?;
+        let condition: Box<Expr> = self.expression()?;
+        self.consume(RightParen, ParserError::RightParenControlFlowConditionExpected)?;
+
+        let body: Box<Stmt> = self.statement()?;
+        Ok(Box::new(Stmt::While { condition, body }))
     }
 
     fn block(&mut self) -> Result<Vec<Box<Stmt>>, ParserErrTup> {
@@ -87,12 +160,12 @@ impl<'a> Parser<'a> {
         self.consume(RightBrace, ParserError::RightBraceExpected)?;
         Ok(statements)
     }
-    
-    fn print_statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {
+
+    fn expr_statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {
         let expr: Box<Expr> = self.expression()?;
         self.consume(Semicolon, ParserError::SemicolonExpected)?;
         
-        Ok(Box::new(Stmt::Print { expr: expr }))
+        Ok(Box::new(Stmt::Expression { expr: expr }))
     }
     
     fn expression(&mut self) -> Result<Box<Expr>, ParserErrTup> {
@@ -100,7 +173,7 @@ impl<'a> Parser<'a> {
     }
 
     fn assignment(&mut self) -> Result<Box<Expr>, ParserErrTup> {
-        let lvalue_expr = self.equality()?;
+        let lvalue_expr = self.or()?;
 
         if self.match_token(&[Equal]) {
             let equals: Token = self.previous();
@@ -117,6 +190,28 @@ impl<'a> Parser<'a> {
         }
 
         Ok(lvalue_expr)
+    }
+
+    fn or(&mut self) -> Result<Box<Expr>, ParserErrTup> {
+        let mut lhs_expr: Box<Expr> = self.and()?;
+
+        while self.match_token(&[Or]) {
+            let operator: Token = self.previous();
+            let rhs_expr: Box<Expr> = self.and()?;
+            lhs_expr = Box::new(Expr::Logical { left: lhs_expr, operator, right: rhs_expr })
+        }
+        Ok(lhs_expr)
+    }
+
+    fn and(&mut self) -> Result<Box<Expr>, ParserErrTup> {
+        let mut lhs_expr: Box<Expr> = self.equality()?;
+
+        while self.match_token(&[And]) {
+            let operator: Token = self.previous();
+            let rhs_expr: Box<Expr> = self.equality()?;
+            lhs_expr = Box::new(Expr::Logical { left: lhs_expr, operator, right: rhs_expr });
+        }
+        Ok(lhs_expr)
     }
 
     fn equality(&mut self) -> Result<Box<Expr>, ParserErrTup> {

@@ -72,6 +72,9 @@ pub enum ParserError {
     NamelessVarDeclaration,
     InvalidAssignment,
     RightBraceExpected,
+    LeftParenControlFlowConditionExpected,
+    RightParenControlFlowConditionExpected,
+    ForConditionSemicolonExpected,
 }
 
 impl ParserError {
@@ -89,6 +92,12 @@ impl ParserError {
                 => "Invalid assignment target.".to_string(),
             ParserError::RightBraceExpected
                 => "Expected '}' after block".to_string(),
+            ParserError::LeftParenControlFlowConditionExpected
+                => "Expected '(' after 'if' token.".to_string(),
+            ParserError::RightParenControlFlowConditionExpected
+                => "Expected ')' after if condition.".to_string(),
+            ParserError::ForConditionSemicolonExpected
+                => "Expected ';' after 'for' loop condition.".to_string(),
         }
     }
 
@@ -105,7 +114,13 @@ impl ParserError {
             ParserError::InvalidAssignment
                 => "InvalidAssignment".to_string(),
             ParserError::RightBraceExpected
-                => "RightBraceExpected".to_string()
+                => "RightBraceExpected".to_string(),
+            ParserError::LeftParenControlFlowConditionExpected
+                => "LeftParenControlFlowConditionExpected".to_string(),
+            ParserError::RightParenControlFlowConditionExpected
+                => "RightParenControlFlowConditionExpected".to_string(),
+            ParserError::ForConditionSemicolonExpected
+                => "ForConditionSemicolonExpected".to_string(),
         }
     }
 }

@@ -54,6 +54,15 @@ impl Interpreter {
                     Err(err) => Err(err),
                 }
             },
+            Stmt::If { condition, then_branch, else_branch } => {
+                let condition_result: LiteralValue = self.evaluate(condition, source)?;
+                if self.is_truthy(&condition_result) {
+                    self.execute(then_branch, source)?;
+                } else if let Some(else_br) = else_branch {
+                    self.execute(else_br, source)?;
+                }
+                Ok(())
+            },
             Stmt::Print { expr } => {
                 match self.evaluate(expr, source) {
                     Ok(val) => {
@@ -70,6 +79,14 @@ impl Interpreter {
                 };
                 let var_name: String = self.get_lexeme(token.start, token.end, source).to_string();
                 self.variables.define(var_name, init_value);
+                Ok(())
+            },
+            Stmt::While { condition, body } => {
+                let mut condition_result: LiteralValue = self.evaluate(condition, source)?;
+                while self.is_truthy(&condition_result) {
+                    self.execute(body, source)?;
+                    condition_result = self.evaluate(condition, source)?;
+                }
                 Ok(())
             },
             Stmt::Block { statements } => {
@@ -101,44 +118,12 @@ impl Interpreter {
 
     fn evaluate<'a>(&mut self, expr: &Expr, source: &'a str) -> Result<LiteralValue, RuntimeErrTup> {
         match expr {
-            Expr::Literal { value} => {
-                match value {
-                    LiteralObject::StringLiteral { start, end } =>  {
-                        Ok(LiteralValue::StringValue(self.get_lexeme(*start, *end, source).to_string()))
-                    },
-                    LiteralObject::NumberLiteral { start, end } => {
-                        // if .unwrap() fails, it means that either 
-                        // (1) tokenization or (2) parsing expressions failed,
-                        // because if something else is stored inside a 
-                        // "LiteralObject::NumberLiteral", it's not the users fault.
-                        Ok(LiteralValue::NumberValue(self.get_lexeme(*start, *end, source).parse::<f32>().unwrap()))
-                    },
-                    LiteralObject::BooleanLiteral { value } => {
-                        Ok(LiteralValue::BooleanValue(*value))
-                    },
-                    LiteralObject::NilLiteral => {
-                        Ok(LiteralValue::NilValue)
-                    },
-                }
-            },
-            Expr::Grouping { expression } => {
-                self.evaluate(expression.as_ref(), source)
-            },
-            Expr::Unary { operator, right } => {
-                let rhs_value: LiteralValue = self.evaluate(right.as_ref(), source)?;
-
-                match operator.token_type {
-                    TokenType::Minus => {
-                        if let LiteralValue::NumberValue(num) = rhs_value {
-                            Ok(LiteralValue::NumberValue(-num))
-                        } else {
-                            Err(RuntimeErrTup(operator.line, RuntimeError::InvalidUnaryOperandError))
-                        }
-                    },
-                    TokenType::Bang => {
-                        Ok(LiteralValue::BooleanValue(!self.is_truthy(&rhs_value)))
-                    },
-                    _ => unreachable!(),
+            Expr::Assign { token, value } => {
+                let rvalue = self.evaluate(value, source)?;
+                let lvalue_name: String = self.get_lexeme(token.start, token.end, source).to_string();
+                match self.variables.assign(lvalue_name, rvalue.clone()) {
+                    Ok(_) => Ok(rvalue),
+                    Err(err) => Err(RuntimeErrTup(token.line, err))
                 }
             },
             Expr::Binary { left, operator, right } => {
@@ -227,6 +212,63 @@ impl Interpreter {
                     _ => unreachable!("A binary expression cannot contain any other TokenType."),
                 }
             },
+            Expr::Grouping { expression } => {
+                self.evaluate(expression.as_ref(), source)
+            },
+            Expr::Literal { value} => {
+                match value {
+                    LiteralObject::StringLiteral { start, end } =>  {
+                        Ok(LiteralValue::StringValue(self.get_lexeme(*start, *end, source).to_string()))
+                    },
+                    LiteralObject::NumberLiteral { start, end } => {
+                        // if .unwrap() fails, it means that either 
+                        // (1) tokenization or (2) parsing expressions failed,
+                        // because if something else is stored inside a 
+                        // "LiteralObject::NumberLiteral", it's not the users fault.
+                        Ok(LiteralValue::NumberValue(self.get_lexeme(*start, *end, source).parse::<f32>().unwrap()))
+                    },
+                    LiteralObject::BooleanLiteral { value } => {
+                        Ok(LiteralValue::BooleanValue(*value))
+                    },
+                    LiteralObject::NilLiteral => {
+                        Ok(LiteralValue::NilValue)
+                    },
+                }
+            },
+            Expr::Logical { left, operator, right } => {
+                let lhs_value: LiteralValue = self.evaluate(left, source)?;
+                match operator.token_type {
+                    TokenType::Or => {
+                        if self.is_truthy(&lhs_value) {
+                            return Ok(lhs_value)
+                        }
+                    },
+                    TokenType::And => {
+                        if !self.is_truthy(&lhs_value) {
+                            return Ok(lhs_value)
+                        }
+                    },
+                    _ => unreachable!("A logical expression cannot contain any other operator/token type."),
+                }
+                Ok(self.evaluate(right, source)?)
+            },
+            Expr::Unary { operator, right } => {
+                let rhs_value: LiteralValue = self.evaluate(right.as_ref(), source)?;
+
+                match operator.token_type {
+                    TokenType::Minus => {
+                        if let LiteralValue::NumberValue(num) = rhs_value {
+                            Ok(LiteralValue::NumberValue(-num))
+                        } else {
+                            Err(RuntimeErrTup(operator.line, RuntimeError::InvalidUnaryOperandError))
+                        }
+                    },
+                    TokenType::Bang => {
+                        Ok(LiteralValue::BooleanValue(!self.is_truthy(&rhs_value)))
+                    },
+                    _ => unreachable!(),
+                }
+            },
             Expr::Variable { token } => {
                 let var_name: &str = self.get_lexeme(token.start, token.end, source);
                 match self.variables.get(var_name) {
@@ -239,14 +281,6 @@ impl Interpreter {
                     None => Err(RuntimeErrTup(token.line, RuntimeError::UndefinedVariableError(var_name.to_string()))),
                 }
             },
-            Expr::Assign { token, value } => {
-                let rvalue = self.evaluate(value, source)?;
-                let lvalue_name: String = self.get_lexeme(token.start, token.end, source).to_string();
-                match self.variables.assign(lvalue_name, rvalue.clone()) {
-                    Ok(_) => Ok(rvalue),
-                    Err(err) => Err(RuntimeErrTup(token.line, err))
-                }
-            }
         }
     }
 
