@@ -93,6 +93,10 @@ impl Interpreter {
                 let local_env: Environment = Environment::new_local(Box::new(self.variables.clone()));
                 self.execute_block(statements, local_env, source)
             },
+            Stmt::Break => {
+                println!("inside break statement.");
+                Ok(())
+            }
         }
     }
 

@@ -1,7 +1,7 @@
 use crate::expr::Expr;
 use crate::token::Token;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Stmt {
     Expression {
         expr: Box<Expr>,
@@ -25,4 +25,5 @@ pub enum Stmt {
     Block {
         statements: Vec<Box<Stmt>>,
     },
+    Break,
 }

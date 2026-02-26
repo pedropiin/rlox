@@ -75,6 +75,7 @@ pub enum ParserError {
     LeftParenControlFlowConditionExpected,
     RightParenControlFlowConditionExpected,
     ForConditionSemicolonExpected,
+    BreakOutsideLoop,
 }
 
 impl ParserError {
@@ -98,6 +99,8 @@ impl ParserError {
                 => "Expected ')' after if condition.".to_string(),
             ParserError::ForConditionSemicolonExpected
                 => "Expected ';' after 'for' loop condition.".to_string(),
+            ParserError::BreakOutsideLoop
+                => "Break statement outside of any enclosing loop.".to_string(),
         }
     }
 
@@ -121,6 +124,8 @@ impl ParserError {
                 => "RightParenControlFlowConditionExpected".to_string(),
             ParserError::ForConditionSemicolonExpected
                 => "ForConditionSemicolonExpected".to_string(),
+            ParserError::BreakOutsideLoop
+                => "BreakOutsideLoop".to_string(),
         }
     }
 }

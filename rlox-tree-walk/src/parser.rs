@@ -15,11 +15,12 @@ pub struct Parser<'a> {
     stmts: &'a mut Vec<Box<Stmt>>,
     current: usize,
     had_error: bool,
+    in_loop: bool,
 }
 
 impl<'a> Parser<'a> {
     pub fn new(tokens: &'a mut Vec<Token>, stmts: &'a mut Vec<Box<Stmt>>) -> Parser<'a> {
-        Parser { tokens, stmts, current: 0, had_error: false }
+        Parser { tokens, stmts, current: 0, had_error: false, in_loop: false }
     }
 
     pub fn parse(&mut self) -> bool {
@@ -74,10 +75,16 @@ impl<'a> Parser<'a> {
         if self.match_token(&[LeftBrace]) {
             return Ok(Box::new(Stmt::Block { statements: self.block()? }))
         }
+        if self.match_token(&[Break]) {
+            return self.break_statement();
+        }
         self.expr_statement()
     }
 
     fn for_statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {
+        let prev_in_loop: bool = self.in_loop;
+        self.in_loop = true;
+
         self.consume(LeftParen, ParserError::LeftParenControlFlowConditionExpected)?;
 
         let initializer: Option<Box<Stmt>> = 
@@ -111,6 +118,8 @@ impl<'a> Parser<'a> {
         }
         body = Box::new(Stmt::While { condition: condition, body });
 
+        self.in_loop = prev_in_loop;
+
         if let Some(init_expr) = initializer {
             Ok(Box::new(Stmt::Block { statements: vec![init_expr, body] }))
         } else {
@@ -140,11 +149,17 @@ impl<'a> Parser<'a> {
     }
 
     fn while_statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {
+        let prev_in_loop: bool = self.in_loop;
+        self.in_loop = true;
+
         self.consume(LeftParen, ParserError::LeftParenControlFlowConditionExpected)?;
         let condition: Box<Expr> = self.expression()?;
         self.consume(RightParen, ParserError::RightParenControlFlowConditionExpected)?;
 
         let body: Box<Stmt> = self.statement()?;
+
+        self.in_loop = prev_in_loop;
+
         Ok(Box::new(Stmt::While { condition, body }))
     }
 
@@ -159,6 +174,15 @@ impl<'a> Parser<'a> {
 
         self.consume(RightBrace, ParserError::RightBraceExpected)?;
         Ok(statements)
+    }
+
+    fn break_statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {
+        if self.in_loop {
+            self.consume(Semicolon, ParserError::SemicolonExpected)?;
+            return Ok(Box::new(Stmt::Break))
+        } else {
+            return Err(ParserErrTup(self.previous().line, ParserError::BreakOutsideLoop))
+        }
     }
 
     fn expr_statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {

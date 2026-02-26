@@ -1,0 +1,12 @@
+var x = 5;
+if (x < 10) {
+    print "first if true";
+    x = x + 10;
+    if (x < 10) {
+        print "second if true";
+    } else {
+        print "second if false";
+    }
+} else {
+    print "first if false";
+}
