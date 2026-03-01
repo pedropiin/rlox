@@ -1,4 +1,6 @@
 use fnv::FnvHashMap;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 use crate::token::{TokenType};
 use crate::expr::{Expr, LiteralObject};
@@ -20,13 +22,13 @@ pub enum LiteralValue {
 
 pub struct Interpreter {
     // pub source: &'a str, 
-    variables: Environment,
+    variables: Rc<RefCell<Environment>>,
     repl_mode: bool,
 }
 
 impl Interpreter {
     pub fn new(repl_mode: bool) -> Interpreter {
-        Interpreter { variables: Environment::new(), repl_mode: repl_mode }
+        Interpreter { variables: Rc::new(RefCell::new(Environment::new())), repl_mode: repl_mode }
     }
 
     pub fn interpret<'a>(&mut self, stmts: &Vec<Box<Stmt>>, source: &'a str) -> bool {
@@ -78,7 +80,7 @@ impl Interpreter {
                     None => LiteralValue::UninitializedValue,
                 };
                 let var_name: String = self.get_lexeme(token.start, token.end, source).to_string();
-                self.variables.define(var_name, init_value);
+                self.variables.borrow_mut().define(var_name, init_value);
                 Ok(())
             },
             Stmt::While { condition, body } => {
@@ -90,7 +92,7 @@ impl Interpreter {
                 Ok(())
             },
             Stmt::Block { statements } => {
-                let local_env: Environment = Environment::new_local(Box::new(self.variables.clone()));
+                let local_env: Rc<RefCell<Environment>> = Rc::new(RefCell::new(Environment::new_local(self.variables.clone())));
                 self.execute_block(statements, local_env, source)
             },
             Stmt::Break => {
@@ -100,7 +102,7 @@ impl Interpreter {
         }
     }
 
-    fn execute_block<'a>(&mut self, statements: &Vec<Box<Stmt>>, environment: Environment, source: &'a str) -> Result<(), RuntimeErrTup> {
+    fn execute_block<'a>(&mut self, statements: &Vec<Box<Stmt>>, environment: Rc<RefCell<Environment>>, source: &'a str) -> Result<(), RuntimeErrTup> {
         let previous_env = self.variables.clone();
 
         self.variables = environment;
@@ -125,7 +127,7 @@ impl Interpreter {
             Expr::Assign { token, value } => {
                 let rvalue = self.evaluate(value, source)?;
                 let lvalue_name: String = self.get_lexeme(token.start, token.end, source).to_string();
-                match self.variables.assign(lvalue_name, rvalue.clone()) {
+                match self.variables.borrow_mut().assign(lvalue_name, rvalue.clone()) {
                     Ok(_) => Ok(rvalue),
                     Err(err) => Err(RuntimeErrTup(token.line, err))
                 }
@@ -275,7 +277,7 @@ impl Interpreter {
             },
             Expr::Variable { token } => {
                 let var_name: &str = self.get_lexeme(token.start, token.end, source);
-                match self.variables.get(var_name) {
+                match self.variables.borrow().get(var_name) {
                     Some(val) => {
                         match val {
                             LiteralValue::UninitializedValue => Err(RuntimeErrTup(token.line, RuntimeError::UninitializedVariableError)),
@@ -349,7 +351,7 @@ impl Interpreter {
 #[derive(Clone)]
 struct Environment {
     variables: FnvHashMap<String, LiteralValue>,
-    enclosing: Option<Box<Environment>>,
+    enclosing: Option<Rc<RefCell<Environment>>>,
 }
 
 impl Environment {
@@ -357,7 +359,7 @@ impl Environment {
         Environment { variables: FnvHashMap::default(), enclosing: None }
     }
 
-    pub fn new_local(enclosing: Box<Environment>) -> Environment {
+    pub fn new_local(enclosing: Rc<RefCell<Environment>>) -> Environment {
         Environment { variables: FnvHashMap::default(), enclosing: Some(enclosing) }
     }
 
@@ -370,7 +372,7 @@ impl Environment {
             return self.variables.get(name).cloned()
         } else {
             if let Some(ref env) = self.enclosing {
-                return env.get(name)
+                return env.borrow().get(name)
             }
             None
         }
@@ -381,8 +383,8 @@ impl Environment {
             *val = value;
             return Ok(())
         } else {
-            if let Some(ref mut env) = self.enclosing {
-                return env.assign(name, value)
+            if let Some(ref env) = self.enclosing {
+                return env.borrow_mut().assign(name, value)
             }            
         }
         Err(RuntimeError::UndefinedVariableError(name))

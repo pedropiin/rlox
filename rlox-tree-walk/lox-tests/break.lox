@@ -1,12 +1,8 @@
-var x = 10;
-var y = 5;
-while (y < 15) {
-    print y;
-    y = y + 1;
-    if (y >= x) {
-        break;
-    }
+var i = 0;
+while (i < 3) {
+    var temp = i * 2;
+    print temp;
+    i = i + 1;
 }
-print "outside while loop";
-print x;
-print y;
+// This should cause a runtime error (temp is not defined):
+print temp;

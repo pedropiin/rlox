@@ -1,0 +1,20 @@
+// Nested while loops
+var i = 0;
+while (i < 3) {
+    var j = 0;
+    while (j < 3) {
+        print i * 3 + j;
+        j = j + 1;
+    }
+    i = i + 1;
+}
+// Expected output:
+// 0
+// 1
+// 2
+// 3
+// 4
+// 5
+// 6
+// 7
+// 8
