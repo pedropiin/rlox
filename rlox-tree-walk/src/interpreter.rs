@@ -114,7 +114,7 @@ impl Interpreter {
                 },
             }
         }
-        
+
         self.variables = previous_env;
         if let Some(err) = error { return Err(err) }
         Ok(())
