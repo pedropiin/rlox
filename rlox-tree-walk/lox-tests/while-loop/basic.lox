@@ -1,0 +1,12 @@
+// Basic while loop counting from 0 to 4
+var i = 0;
+while (i < 5) {
+    print i;
+    i = i + 1;
+}
+// Expected output:
+// 0
+// 1
+// 2
+// 3
+// 4

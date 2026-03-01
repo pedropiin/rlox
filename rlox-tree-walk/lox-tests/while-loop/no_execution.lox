@@ -1,0 +1,9 @@
+// While loop that never executes
+var x = 10;
+while (x < 0) {
+    print "this should not print";
+    x = x + 1;
+}
+print x;
+// Expected output:
+// 10
