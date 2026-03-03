@@ -8,6 +8,7 @@ use crate::stmt::Stmt;
 use crate::errors::{RuntimeError, lox_error};
 
 const EPSILON: f32 = 1e-6;
+const IGNORE_USIZE: usize = 0;
 
 pub struct RuntimeErrTup(usize, RuntimeError);
 
@@ -86,7 +87,13 @@ impl Interpreter {
             Stmt::While { condition, body } => {
                 let mut condition_result: LiteralValue = self.evaluate(condition, source)?;
                 while self.is_truthy(&condition_result) {
-                    self.execute(body, source)?;
+                    if let Err(err) = self.execute(body, source) {
+                        match err.1 {
+                            RuntimeError::BreakStmtException    => break,
+                            RuntimeError::ContinueStmtException => continue,
+                            _                                   => return Err(err),
+                        }
+                    }
                     condition_result = self.evaluate(condition, source)?;
                 }
                 Ok(())
@@ -96,8 +103,10 @@ impl Interpreter {
                 self.execute_block(statements, local_env, source)
             },
             Stmt::Break => {
-                println!("inside break statement.");
-                Ok(())
+                Err(RuntimeErrTup(IGNORE_USIZE, RuntimeError::BreakStmtException))
+            },
+            Stmt::Continue => {
+                Err(RuntimeErrTup(IGNORE_USIZE, RuntimeError::ContinueStmtException))
             }
         }
     }

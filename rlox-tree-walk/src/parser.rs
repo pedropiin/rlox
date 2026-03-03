@@ -78,6 +78,9 @@ impl<'a> Parser<'a> {
         if self.match_token(&[Break]) {
             return self.break_statement();
         }
+        if self.match_token(&[Continue]) {
+            return self.continue_statement();
+        }
         self.expr_statement()
     }
 
@@ -182,6 +185,15 @@ impl<'a> Parser<'a> {
             return Ok(Box::new(Stmt::Break))
         } else {
             return Err(ParserErrTup(self.previous().line, ParserError::BreakOutsideLoop))
+        }
+    }
+
+    fn continue_statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {
+        if self.in_loop {
+            self.consume(Semicolon, ParserError::SemicolonExpected)?;
+            return Ok(Box::new(Stmt::Continue))
+        } else {
+            return Err(ParserErrTup(self.previous().line, ParserError::ContinueOutsideLoop))
         }
     }
 

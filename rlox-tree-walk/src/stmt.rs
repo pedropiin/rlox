@@ -26,4 +26,5 @@ pub enum Stmt {
         statements: Vec<Box<Stmt>>,
     },
     Break,
+    Continue,
 }

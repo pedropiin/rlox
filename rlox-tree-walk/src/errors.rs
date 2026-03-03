@@ -76,6 +76,7 @@ pub enum ParserError {
     RightParenControlFlowConditionExpected,
     ForConditionSemicolonExpected,
     BreakOutsideLoop,
+    ContinueOutsideLoop,
 }
 
 impl ParserError {
@@ -101,6 +102,8 @@ impl ParserError {
                 => "Expected ';' after 'for' loop condition.".to_string(),
             ParserError::BreakOutsideLoop
                 => "Break statement outside of any enclosing loop.".to_string(),
+            ParserError::ContinueOutsideLoop
+                => "Continue statement outside of any enclosing loop.".to_string(),
         }
     }
 
@@ -126,6 +129,8 @@ impl ParserError {
                 => "ForConditionSemicolonExpected".to_string(),
             ParserError::BreakOutsideLoop
                 => "BreakOutsideLoop".to_string(),
+            ParserError::ContinueOutsideLoop
+                => "ContinueOutsideLoop".to_string(),
         }
     }
 }
@@ -144,6 +149,8 @@ pub enum RuntimeError {
     DivisionByZeroError,
     UndefinedVariableError(String),
     UninitializedVariableError,
+    BreakStmtException,
+    ContinueStmtException,
 }
 
 impl RuntimeError {
@@ -160,7 +167,11 @@ impl RuntimeError {
             RuntimeError::UndefinedVariableError(var_name)
                 => format!("Undefined variable '{var_name}'."),
             RuntimeError::UninitializedVariableError
-                => "Use of uninitialized variable".to_string(),
+                => "Use of uninitialized variable.".to_string(),
+            RuntimeError::BreakStmtException
+                => "Error used as exception to properly deal with a 'break' statement. Not to be thrown at user. ".to_string(),
+            RuntimeError::ContinueStmtException
+                => "Error used as exception to properly deal with a 'continue' statement. Not to be thrown at user. ".to_string(),
         }
     }
 
@@ -178,6 +189,10 @@ impl RuntimeError {
                 => "UndefinedVariableError".to_string(),
             RuntimeError::UninitializedVariableError
                 => "UninitializedVariableError".to_string(),
+            RuntimeError::BreakStmtException
+                => "BreakStmtException".to_string(),
+            RuntimeError::ContinueStmtException
+                => "ContinueStmtException".to_string(),
         }
     }
 }

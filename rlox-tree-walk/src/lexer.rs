@@ -157,6 +157,7 @@ impl<'a> Lexer<'a> {
             "var"      => Var,
             "while"    => While,
             "break"    => Break,
+            "continue" => Continue,
             _          => Identifier,
         };
 
