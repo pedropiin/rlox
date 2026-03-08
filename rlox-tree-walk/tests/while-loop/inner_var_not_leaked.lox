@@ -7,8 +7,3 @@ while (i < 3) {
 }
 // This should cause a runtime error (temp is not defined):
 print temp;
-// Expected output:
-// 0
-// 2
-// 4
-// [runtime error on last line]

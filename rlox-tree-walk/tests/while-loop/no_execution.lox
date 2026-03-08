@@ -5,5 +5,3 @@ while (x < 0) {
     x = x + 1;
 }
 print x;
-// Expected output:
-// 10

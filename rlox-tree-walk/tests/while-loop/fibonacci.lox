@@ -9,14 +9,3 @@ while (count < 10) {
     b = temp;
     count = count + 1;
 }
-// Expected output:
-// 0
-// 1
-// 1
-// 2
-// 3
-// 5
-// 8
-// 13
-// 21
-// 34

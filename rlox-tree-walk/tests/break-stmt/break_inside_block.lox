@@ -9,5 +9,3 @@ while (true) {
     }
 }
 print i;
-// Expected output:
-// 3
