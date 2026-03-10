@@ -16,6 +16,7 @@ mod expr;
 mod stmt;
 mod parser;
 mod errors;
+mod utils;
 #[allow(warnings)]
 mod ast_pretty_printer;
 mod interpreter;
