@@ -6,6 +6,7 @@ use crate::token::{TokenType};
 use crate::expr::{Expr, LiteralObject};
 use crate::stmt::Stmt;
 use crate::errors::{RuntimeError, lox_error};
+use crate::utils;
 
 const EPSILON: f32 = 1e-6;
 const IGNORE_USIZE: usize = 0;
@@ -233,7 +234,7 @@ impl Interpreter {
             Expr::Literal { value} => {
                 match value {
                     LiteralObject::StringLiteral { start, end } =>  {
-                        Ok(LiteralValue::StringValue(self.get_lexeme(*start, *end, source).to_string()))
+                        Ok(LiteralValue::StringValue(utils::parse_escape_sequences(self.get_lexeme(*start, *end, source))))
                     },
                     LiteralObject::NumberLiteral { start, end } => {
                         // if .unwrap() fails, it means that either 
