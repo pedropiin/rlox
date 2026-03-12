@@ -297,6 +297,16 @@ impl Interpreter {
                     None => Err(RuntimeErrTup(token.line, RuntimeError::UndefinedVariableError(var_name.to_string()))),
                 }
             },
+            Expr::Call { callee, paren, args } => {
+                let callee: LiteralValue = self.evaluate(callee, source)?;
+
+                let mut arguments: Vec<LiteralValue> = Vec::new();
+                for arg in args {
+                    arguments.push(self.evaluate(arg.as_ref(), source)?);
+                }
+
+                Ok(callee) //TODO: this is completely wrong. FIX
+            },
         }
     }
 

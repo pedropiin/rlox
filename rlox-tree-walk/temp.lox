@@ -1,0 +1,7 @@
+print "first";
+print "\\";
+print "\\\\";
+print "\\n";
+print "\q";
+print "ending with backslash\";
+print "weird\n\tformatted\n\t\tstring";
