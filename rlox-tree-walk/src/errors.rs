@@ -1,3 +1,5 @@
+pub const MAX_ARGS: usize = 255;
+
 // Main error handling method
 pub fn lox_error(line: usize, error_type: LoxError) {
     fn report(line: usize, locale: &str, error_type: LoxError) {
@@ -77,6 +79,8 @@ pub enum ParserError {
     ForConditionSemicolonExpected,
     BreakOutsideLoop,
     ContinueOutsideLoop,
+    MissingParenArgumentList,
+    TooManyArguments,
 }
 
 impl ParserError {
@@ -104,6 +108,10 @@ impl ParserError {
                 => "Break statement outside of any enclosing loop.".to_string(),
             ParserError::ContinueOutsideLoop
                 => "Continue statement outside of any enclosing loop.".to_string(),
+            ParserError::MissingParenArgumentList
+                => "Expected ')' after argument list.".to_string(),
+            ParserError::TooManyArguments 
+                => format!("Can't have more than {} arguments.", MAX_ARGS),
         }
     }
 
@@ -131,6 +139,10 @@ impl ParserError {
                 => "BreakOutsideLoop".to_string(),
             ParserError::ContinueOutsideLoop
                 => "ContinueOutsideLoop".to_string(),
+            ParserError::MissingParenArgumentList
+                => "MissingParenArgumentList".to_string(),
+            ParserError::TooManyArguments 
+                => "TooManyArguments".to_string(),
         }
     }
 }

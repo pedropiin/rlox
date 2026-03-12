@@ -5,7 +5,7 @@ use crate::token::TokenType::{self, *};
 use crate::expr::Expr;
 use crate::stmt::Stmt;
 use crate::expr::LiteralObject::{self};
-use crate::errors::{ParserError, lox_error};
+use crate::errors::{ParserError, lox_error, MAX_ARGS};
 
 #[derive(Clone)]
 struct ParserErrTup(usize, ParserError);
@@ -306,6 +306,40 @@ impl<'a> Parser<'a> {
         }
 
         self.primary()
+    }
+
+    fn call(&mut self) -> Result<Box<Expr>, ParserErrTup> {
+        let mut expr: Box<Expr> = self.primary()?;
+
+        loop { 
+            if self.match_token(&[LeftParen]) { 
+                expr = self.finish_call(expr)?; 
+            } else { 
+                break;
+            }
+        }
+
+        Ok(expr)
+    }
+
+    fn finish_call(&mut self, expr: Box<Expr>) -> Result<Box<Expr>, ParserErrTup> {
+        let mut args: Vec<Box<Expr>> = Vec::new();
+        
+        if !self.check(RightParen) {
+            loop {
+                if args.len() >= MAX_ARGS {
+                    lox_error(self.peek().line, ParserError::TooManyArguments.into());
+                }
+                args.push(self.expression()?);
+                if self.match_token(&[Comma]) {
+                    break;
+                }
+            }
+        }
+
+        let paren: Token = self.consume(RightParen, ParserError::MissingParenArgumentList)?;
+
+        Ok(Box::new(Expr::Call { callee: expr, paren: paren, args: args }))
     }
 
     fn primary(&mut self) -> Result<Box<Expr>, ParserErrTup> { 

@@ -2,8 +2,6 @@ use crate::token::Token;
 use crate::token::TokenType::{self, *};
 use crate::errors::{LexerError, lox_error};
 
-
-
 pub struct Lexer<'a> {
     source: &'a str,
     tokens: &'a mut Vec<Token>,
