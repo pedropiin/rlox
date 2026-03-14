@@ -1,3 +1,6 @@
+pub const FUNCTION_MODE: u8 = 1;
+pub const METHOD_MODE: u8 = 2;
+
 pub fn parse_escape_sequences(og_str: &str) -> String {
     let mut result = String::with_capacity(og_str.len());
     let mut chars = og_str.chars();
@@ -15,4 +18,9 @@ pub fn parse_escape_sequences(og_str: &str) -> String {
     }
 
     result
+}
+
+pub fn get_callable_kind(mode: u8) -> String {
+    if mode == FUNCTION_MODE { "function".to_string() }
+    else { "method".to_string() }
 }

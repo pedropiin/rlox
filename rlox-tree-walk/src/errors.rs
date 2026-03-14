@@ -1,3 +1,5 @@
+use crate::utils::{get_callable_kind, FUNCTION_MODE, METHOD_MODE};
+
 pub const MAX_ARGS: usize = 255;
 
 // Main error handling method
@@ -81,6 +83,11 @@ pub enum ParserError {
     ContinueOutsideLoop,
     MissingParenArgumentList,
     TooManyArguments,
+    CallableDefIdentifierExpected(u8),
+    CallableDefMissingLeftParen(u8),
+    CallableDefMissingRightParen,
+    MissingParameterError,
+    CallableDefMissingLeftBrace(u8),
 }
 
 impl ParserError {
@@ -112,6 +119,16 @@ impl ParserError {
                 => "Expected ')' after argument list.".to_string(),
             ParserError::TooManyArguments 
                 => format!("Can't have more than {} arguments.", MAX_ARGS),
+            ParserError::CallableDefIdentifierExpected(mode) 
+                => format!("Expected {} name.", get_callable_kind(*mode)),
+            ParserError::CallableDefMissingLeftParen(mode)
+                => format!("Expected '(' after {} name.", get_callable_kind(*mode)),
+            ParserError::CallableDefMissingRightParen
+                => "Expected ')' after parameter names.".to_string(),
+            ParserError::MissingParameterError 
+                => "Expected parameter name.".to_string(),
+            ParserError::CallableDefMissingLeftBrace(mode)
+                => format!("Expected '{{' before {} body.", get_callable_kind(*mode)),
         }
     }
 
@@ -143,6 +160,16 @@ impl ParserError {
                 => "MissingParenArgumentList".to_string(),
             ParserError::TooManyArguments 
                 => "TooManyArguments".to_string(),
+            ParserError::CallableDefIdentifierExpected(_) 
+                => "CallableDefIdentifierExpected".to_string(),
+            ParserError::CallableDefMissingLeftParen(_)
+                => "CallableDefMissingLeftParen".to_string(),
+            ParserError::CallableDefMissingRightParen 
+                => "CallableDefMissingRightParen".to_string(),
+            ParserError::MissingParameterError 
+                => "MissingParameterError".to_string(),
+            ParserError::CallableDefMissingLeftBrace(_)
+                => "CallableDefMissingLeftBrace".to_string(),
         }
     }
 }

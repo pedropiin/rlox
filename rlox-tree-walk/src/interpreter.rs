@@ -67,6 +67,9 @@ impl Interpreter {
                     Err(err) => Err(err),
                 }
             },
+            Stmt::Function { name, params, body } => {
+                todo!();
+            },
             Stmt::If { condition, then_branch, else_branch } => {
                 let condition_result: LiteralValue = self.evaluate(condition, source)?;
                 if self.is_truthy(&condition_result) {

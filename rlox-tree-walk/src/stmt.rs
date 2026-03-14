@@ -6,6 +6,11 @@ pub enum Stmt {
     Expression {
         expr: Box<Expr>,
     },
+    Function {
+        name: Token,
+        params: Vec<Token>,
+        body: Vec<Box<Stmt>>,
+    },
     If {
         condition: Box<Expr>,
         then_branch: Box<Stmt>,
