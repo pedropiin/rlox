@@ -17,6 +17,7 @@ mod stmt;
 mod parser;
 mod errors;
 mod utils;
+mod lox_callable;
 #[allow(warnings)]
 mod ast_pretty_printer;
 mod interpreter;

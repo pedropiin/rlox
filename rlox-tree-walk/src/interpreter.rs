@@ -1,12 +1,13 @@
 use fnv::FnvHashMap;
 use std::rc::Rc;
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 
 use crate::token::{TokenType};
 use crate::expr::{Expr, LiteralObject};
 use crate::stmt::Stmt;
 use crate::errors::{RuntimeError, lox_error};
 use crate::utils;
+use crate::lox_callable::*;
 
 const EPSILON: f32 = 1e-6;
 const IGNORE_USIZE: usize = 0;
@@ -20,17 +21,25 @@ pub enum LiteralValue {
     BooleanValue(bool),
     NilValue,
     UninitializedValue,
+    Function(Function),
 }
 
 pub struct Interpreter {
-    // pub source: &'a str, 
+    globals: Rc<RefCell<Environment>>,
     variables: Rc<RefCell<Environment>>,
     repl_mode: bool,
 }
 
 impl Interpreter {
     pub fn new(repl_mode: bool) -> Interpreter {
-        Interpreter { variables: Rc::new(RefCell::new(Environment::new())), repl_mode: repl_mode }
+        let env: Rc<RefCell<Environment>> = Rc::new(RefCell::new(Environment::new()));
+
+        env.borrow_mut().define(
+            "clock".to_string(),
+            LiteralValue::Function(Function::Native(NativeFunction::Clock(ClockFunction)))
+        );
+
+        Interpreter { globals: env.clone(), variables: env.clone(), repl_mode: repl_mode }
     }
 
     pub fn interpret<'a>(&mut self, stmts: &Vec<Box<Stmt>>, source: &'a str) -> bool {
@@ -305,7 +314,15 @@ impl Interpreter {
                     arguments.push(self.evaluate(arg.as_ref(), source)?);
                 }
 
-                Ok(callee) //TODO: this is completely wrong. FIX
+                match callee {
+                    LiteralValue::Function(function) => {
+                        if arguments.len() != function.arity() {
+                            return Err(RuntimeErrTup(paren.line, RuntimeError::CallParityError(function.arity(), arguments.len())))
+                        }
+                        Ok(function.call(&self, arguments))
+                    },
+                    _ => Err(RuntimeErrTup(paren.line, RuntimeError::NonCallableValueError)),
+                }
             },
         }
     }
@@ -340,6 +357,7 @@ impl Interpreter {
                 else { Ok(false) }
             },
             LiteralValue::UninitializedValue => Err(RuntimeError::UninitializedVariableError),
+            LiteralValue::Function(_) => Err(RuntimeError::FunctionNotComparableError)
         }
     }
 
@@ -359,6 +377,7 @@ impl Interpreter {
             LiteralValue::UninitializedValue 
                 => unreachable!("Even though a print statement can be called with an uninitialized variable, 
                                 its evaluation will raise the error prior to the 'print' statement evaluation itself."),
+            LiteralValue::Function(function) => function.to_string().to_string(),
         };
         println!("{}", str_value);
     }
