@@ -163,6 +163,9 @@ pub enum RuntimeError {
     UninitializedVariableError,
     BreakStmtException,
     ContinueStmtException,
+    NonCallableValueError,
+    FunctionNotComparableError,
+    CallParityError(usize, usize),
 }
 
 impl RuntimeError {
@@ -184,6 +187,12 @@ impl RuntimeError {
                 => "Error used as exception to properly deal with a 'break' statement. Not to be thrown at user. ".to_string(),
             RuntimeError::ContinueStmtException
                 => "Error used as exception to properly deal with a 'continue' statement. Not to be thrown at user. ".to_string(),
+            RuntimeError::NonCallableValueError
+                => "Can only call functions and classes.".to_string(),
+            RuntimeError::FunctionNotComparableError
+                => "Cannot compare two callable values.".to_string(),
+            RuntimeError::CallParityError(og_parity, found_parity)
+                => format!("Expected {} arguments, but got {} in call.", og_parity, found_parity),
         }
     }
 
@@ -205,6 +214,12 @@ impl RuntimeError {
                 => "BreakStmtException".to_string(),
             RuntimeError::ContinueStmtException
                 => "ContinueStmtException".to_string(),
+            RuntimeError::NonCallableValueError
+                => "NonCallableValue".to_string(),
+            RuntimeError::FunctionNotComparableError
+                => "FunctionNotComparableError".to_string(),
+            RuntimeError::CallParityError(_, __)
+                => "CallParityError".to_string(),
         }
     }
 }
