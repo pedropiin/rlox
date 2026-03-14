@@ -6,6 +6,7 @@ use crate::expr::Expr;
 use crate::stmt::Stmt;
 use crate::expr::LiteralObject::{self};
 use crate::errors::{ParserError, lox_error, MAX_ARGS};
+use crate::utils::{FUNCTION_MODE, METHOD_MODE};
 
 #[derive(Clone)]
 struct ParserErrTup(usize, ParserError);
@@ -36,6 +37,8 @@ impl<'a> Parser<'a> {
         let result = 
             if self.match_token(&[Var]) {
                 self.var_declaration()
+            } else if self.match_token(&[Fun]) {
+                self.function(FUNCTION_MODE)
             } else { self.statement() };
 
         match result {
@@ -202,6 +205,31 @@ impl<'a> Parser<'a> {
         self.consume(Semicolon, ParserError::SemicolonExpected)?;
         
         Ok(Box::new(Stmt::Expression { expr: expr }))
+    }
+
+    fn function(&mut self, mode: u8) -> Result<Box<Stmt>, ParserErrTup> {
+        let name: Token = self.consume(Identifier, ParserError::CallableDefIdentifierExpected(mode))?;
+        self.consume(LeftParen, ParserError::CallableDefMissingLeftParen(mode))?;
+
+        let mut params: Vec<Token> = Vec::new();
+        if !self.check(RightParen) {
+            loop {
+                if params.len() > MAX_ARGS {
+                    lox_error(self.peek().line, ParserError::TooManyArguments.into());
+                }
+                params.push(self.consume(Identifier, ParserError::MissingParameterError)?);
+                
+                if !self.match_token(&[Comma]) { 
+                    break;
+                }
+            }
+        }
+        self.consume(RightParen, ParserError::CallableDefMissingRightParen)?;
+
+        self.consume(LeftBrace, ParserError::CallableDefMissingLeftBrace(mode))?;
+        let body: Vec<Box<Stmt>> = self.block()?;
+
+        Ok(Box::new(Stmt::Function { name: name, params: params, body: body }))
     }
     
     fn expression(&mut self) -> Result<Box<Expr>, ParserErrTup> {
