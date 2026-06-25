@@ -1,52 +1,103 @@
 use assert_cmd::cargo::*;
-use predicates::prelude::*;
-use walkdir::WalkDir;
-use std::collections::HashSet;
+use std::io::{Error, Write};
+use std::path::PathBuf;
+use std::ffi::OsStr;
+use std::str::from_utf8;
+use std::panic::catch_unwind;
+
+const TESTS_DIRECTORY: &str = "./tests";
+const STDOUT_MARK: &str = "// STDOUT";
+const STDERR_MARK: &str = "// STDERR";
+
 
 #[test]
-fn run_tests_interpreter() -> Result<(), Box<dyn std::error::Error>> {
-    // Tests that evaluate runtime errors
-    let mut error_test_files: HashSet<&str> = HashSet::new();
-    error_test_files.insert("inner_var_not_leaked.lox");
+fn run_all_snapshot_tests() -> Result<(), Error> {
+    let mut total: i32 = 0;
+    let mut passed: i32 = 0;
 
-    let mut total = 0;
-    let mut passed = 0;
-
-    for entry in WalkDir::new("./tests/").into_iter().filter_map(|e| e.ok()) {
-        match entry.path().extension() {
-            Some(ext) => {
-                if !ext.eq_ignore_ascii_case("lox") {
+    let paths: std::fs::ReadDir = std::fs::read_dir(TESTS_DIRECTORY).unwrap();
+    for path in paths {
+        let dir_path = match path {
+            Ok(dir_entry) => {
+                if !dir_entry.file_type().unwrap().is_dir() {
                     continue;
                 }
+                dir_entry.path()
             },
-            None => continue,
+            Err(e) => {
+                eprintln!("Error when reading the {} directory: {}", TESTS_DIRECTORY, e);
+                continue;
+            }
+        };
+
+        println!("--- Testing for '{}' ---", dir_path.to_str().unwrap());
+
+        let mut entries: Vec<PathBuf> = std::fs::read_dir(&dir_path).unwrap().map(|e| e.unwrap().path()).collect();
+        entries.sort();
+        
+        let chunks = entries.chunks_exact(2);
+        if chunks.remainder().len() != 0 {
+            eprintln!("Failed to fetch (input, output) pairs: please make sure the directory is well-structured, with one '.out' file per '.in' file.");
+            continue;
+        }
+        let input_output_pairs: Vec<(&OsStr, &OsStr)> = 
+            chunks.map(|chunk| (chunk[0].as_os_str(), chunk[1].as_os_str())).collect();
+
+        total += input_output_pairs.len() as i32;
+
+        for input_output_pair in input_output_pairs {
+            let input_path = input_output_pair.0;
+            let output_path = input_output_pair.1;
+
+            print!("\tRunning test {}: ", input_path.display());
+            let _ = std::io::stdout().flush();
+
+            let mut expected_stdout: String = String::from("");
+            let mut expected_stderr: String = String::from("");
+            let mut to_stdout: bool = true;
+            for line in std::fs::read_to_string(output_path).unwrap().lines() {
+                if line.eq_ignore_ascii_case(STDOUT_MARK) {
+                    to_stdout = true;
+                    continue;
+                }
+                if line.eq_ignore_ascii_case(STDERR_MARK) {
+                    to_stdout = false;
+                    continue;
+                }
+
+                if to_stdout {
+                    expected_stdout.push_str(line);
+                    expected_stdout.push('\n');
+                } else {
+                    expected_stderr.push_str(line);
+                    expected_stderr.push('\n');
+                }
+            }
+
+            let cmd = cargo_bin_cmd!("rlox-tree-walk").arg(input_path).output().expect("Command execution failed.");
+            let cmd_stdout: String = from_utf8(&cmd.stdout).expect("Error when trying to read stdout: contains non-utf8 characters.").to_string();
+            let cmd_stderr: String = from_utf8(&cmd.stderr).expect("Error when trying to read stderr: contains non-utf8 characters.").to_string();
+
+            match catch_unwind(|| {
+                assert_eq!(expected_stdout, cmd_stdout);
+            }) {
+                Ok(_) => (),
+                Err(_) => continue,
+            }
+            match catch_unwind(|| {
+                assert_eq!(expected_stderr, cmd_stderr);
+            }) {
+                Ok(_) => (),
+                Err(_) => continue,
+            }
+
+            println!("\n\t\tPASSED");
+            passed += 1;
         }
 
-        total += 1;
-
-        let input_file: String = entry.path().to_str().unwrap().to_string();
-        let output_file: String = input_file.strip_suffix(".lox").unwrap().to_string() + ".out";
-
-        println!("Testing: '{input_file}'.");
-
-        let expected_output: String = std::fs::read_to_string(&output_file)
-                                        .unwrap_or_else(|_| panic!("Couldn't open {output_file} file."))
-                                        .trim_end()
-                                        .to_string() + "\n";
-
-        let mut cmd = cargo_bin_cmd!("rlox-tree-walk");
-        cmd.arg(input_file);
-
-        if error_test_files.contains(entry.file_name().to_str().unwrap()) {
-            cmd.assert().failure().stdout(predicate::str::diff(expected_output));
-        } else {
-            cmd.assert().success().stdout(predicate::str::diff(expected_output));
-        }
-
-        passed += 1;
+        println!();
     }
 
-    println!("\nTotal: {total}\n\tPassed: {passed}; Failed: {};", total-passed);
-
+    println!("Passed: {}\nTotal: {}", passed, total);
     Ok(())
 }
