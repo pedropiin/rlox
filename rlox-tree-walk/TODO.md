@@ -12,5 +12,9 @@
 - [ ] allow for escapes sequences inside string literals;
 - [ ] allow blocks inside REPL
 
+## IMPROVEMENTS:
+- [ ] dependency injection for output 
+- [ ] unit testing based on dependency injection
+
 ## BUG FIXES:
 - [ ] buggy execution for inline blocks in REPL
