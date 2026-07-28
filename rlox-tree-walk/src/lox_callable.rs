@@ -1,4 +1,5 @@
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::rc::Rc;
+use std::fmt;
 
 use crate::interpreter::{Interpreter, LiteralValue};
 
@@ -7,19 +8,26 @@ pub trait LoxCallable {
     fn arity(&self) -> usize;
     fn to_string(&self) -> &str;
 }
+impl fmt::Debug for dyn LoxCallable {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("LoxCallable")
+            .field("name", &self.to_string())
+            .finish()
+    }
+}
 
-#[derive(Debug, Clone)]
+#[derive(Debug,Clone)]
 pub enum Function {
-    Native(NativeFunction),
+    // I guess here we can use Rc's of trait objects to allow cloning due to the fact that 
+    // native functions won't change ever.  
+    Native(Rc<dyn LoxCallable>), 
     UserDefined(UserDefinedFunction),
 }
 impl LoxCallable for Function {
     fn call(&self, interpreter: &Interpreter, arguments: Vec<LiteralValue>) -> LiteralValue {
         match self {
             Function::Native(native_func) => {
-                match native_func {
-                    NativeFunction::Clock(clock_func) => clock_func.call(interpreter, arguments),
-                }
+                native_func.call(interpreter, arguments)
             },
             Function::UserDefined(user_defined_func) => {
                 todo!();
@@ -30,9 +38,7 @@ impl LoxCallable for Function {
     fn arity(&self) -> usize {
         match self {
             Function::Native(native_func) => {
-                match native_func {
-                    NativeFunction::Clock(clock_func) => clock_func.arity(),
-                }
+                native_func.arity()
             },
             Function::UserDefined(user_defined_func) => {
                 todo!();
@@ -43,42 +49,15 @@ impl LoxCallable for Function {
     fn to_string(&self) -> &str {
         match self {
             Function::Native(native_func) => {
-                match native_func {
-                    NativeFunction::Clock(clock_func) => clock_func.to_string(),
-                }
+                native_func.to_string()
             },
             Function::UserDefined(user_defined_func) => {
                 todo!();
             },
         }
     }
+
 }
 
-#[derive(Debug, Clone)]
-pub enum NativeFunction {
-    Clock(ClockFunction),
-}
-
-#[derive(Debug, Clone)]
-pub struct ClockFunction;
-impl LoxCallable for ClockFunction {
-    fn call(&self, _1: &Interpreter, _2: Vec<LiteralValue>) -> LiteralValue {
-        let now = 
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("Non-monotonic clock drift caused interal 'clock' duration to be negative.")
-                .as_secs_f32();
-        LiteralValue::NumberValue(now)
-    }
-
-    fn arity(&self) -> usize {
-        0
-    }
-
-    fn to_string(&self) -> &str {
-        "<native clock fn>"
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug,Clone)]
 struct UserDefinedFunction;

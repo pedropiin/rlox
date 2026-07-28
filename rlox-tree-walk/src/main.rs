@@ -21,6 +21,7 @@ mod lox_callable;
 #[allow(warnings)]
 mod ast_pretty_printer;
 mod interpreter;
+mod native_functions;
 
 fn run<'a>(source: &'a str, interpreter: &'a mut Interpreter) -> bool {
     let mut tokens: Vec<Token> = Vec::new();
