@@ -59,6 +59,16 @@ impl Interpreter {
 
     fn execute<'a>(&mut self, stmt: &Stmt, source: &'a str) -> Result<(), RuntimeErrTup> {
         match stmt {
+            Stmt::Block { statements } => {
+                let local_env: Rc<RefCell<Environment>> = Rc::new(RefCell::new(Environment::new_local(self.variables.clone())));
+                self.execute_block(statements, local_env, source)
+            },
+            Stmt::Break => {
+                Err(RuntimeErrTup(IGNORE_USIZE, RuntimeError::BreakStmtException))
+            },
+            Stmt::Continue => {
+                Err(RuntimeErrTup(IGNORE_USIZE, RuntimeError::ContinueStmtException))
+            },
             Stmt::Expression { expr } => {
                 match self.evaluate(expr, source) {
                     Ok(res) => {
@@ -112,16 +122,6 @@ impl Interpreter {
                 }
                 Ok(())
             },
-            Stmt::Block { statements } => {
-                let local_env: Rc<RefCell<Environment>> = Rc::new(RefCell::new(Environment::new_local(self.variables.clone())));
-                self.execute_block(statements, local_env, source)
-            },
-            Stmt::Break => {
-                Err(RuntimeErrTup(IGNORE_USIZE, RuntimeError::BreakStmtException))
-            },
-            Stmt::Continue => {
-                Err(RuntimeErrTup(IGNORE_USIZE, RuntimeError::ContinueStmtException))
-            }
         }
     }
 
@@ -241,6 +241,24 @@ impl Interpreter {
                     _ => unreachable!("A binary expression cannot contain any other TokenType."),
                 }
             },
+            Expr::Call { callee, paren, args } => {
+                let callee: LiteralValue = self.evaluate(callee, source)?;
+
+                let mut arguments: Vec<LiteralValue> = Vec::new();
+                for arg in args {
+                    arguments.push(self.evaluate(arg.as_ref(), source)?);
+                }
+
+                match callee {
+                    LiteralValue::Function(function) => {
+                        if arguments.len() != function.arity() {
+                            return Err(RuntimeErrTup(paren.line, RuntimeError::CallParityError(function.arity(), arguments.len())))
+                        }
+                        Ok(function.call(&self, arguments))
+                    },
+                    _ => Err(RuntimeErrTup(paren.line, RuntimeError::NonCallableValueError)),
+                }
+            },
             Expr::Grouping { expression } => {
                 self.evaluate(expression.as_ref(), source)
             },
@@ -308,24 +326,6 @@ impl Interpreter {
                         }
                     },
                     None => Err(RuntimeErrTup(token.line, RuntimeError::UndefinedVariableError(var_name.to_string()))),
-                }
-            },
-            Expr::Call { callee, paren, args } => {
-                let callee: LiteralValue = self.evaluate(callee, source)?;
-
-                let mut arguments: Vec<LiteralValue> = Vec::new();
-                for arg in args {
-                    arguments.push(self.evaluate(arg.as_ref(), source)?);
-                }
-
-                match callee {
-                    LiteralValue::Function(function) => {
-                        if arguments.len() != function.arity() {
-                            return Err(RuntimeErrTup(paren.line, RuntimeError::CallParityError(function.arity(), arguments.len())))
-                        }
-                        Ok(function.call(&self, arguments))
-                    },
-                    _ => Err(RuntimeErrTup(paren.line, RuntimeError::NonCallableValueError)),
                 }
             },
         }

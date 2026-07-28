@@ -3,6 +3,11 @@ use crate::token::Token;
 
 #[derive(Clone, Debug)]
 pub enum Stmt {
+    Block {
+        statements: Vec<Box<Stmt>>,
+    },
+    Break,
+    Continue,
     Expression {
         expr: Box<Expr>,
     },
@@ -27,9 +32,4 @@ pub enum Stmt {
         condition: Box<Expr>,
         body: Box<Stmt>,
     },
-    Block {
-        statements: Vec<Box<Stmt>>,
-    },
-    Break,
-    Continue,
 }

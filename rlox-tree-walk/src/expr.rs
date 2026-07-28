@@ -11,6 +11,11 @@ pub enum Expr {
         operator: Token,
         right: Box<Expr>,
     },
+    Call {
+        callee: Box<Expr>,
+        paren: Token,
+        args: Vec<Box<Expr>>,
+    },
     Grouping {
         expression: Box<Expr>,
     },
@@ -29,25 +34,20 @@ pub enum Expr {
     Variable {
         token: Token,
     },
-    Call {
-        callee: Box<Expr>,
-        paren: Token,
-        args: Vec<Box<Expr>>,
-    },
 }
 
 #[derive(Debug, Clone, Copy)]
 pub enum LiteralObject {
-    StringLiteral {
-        start: usize,
-        end: usize,
-    },
-    NumberLiteral {
-        start: usize, 
-        end: usize,
-    },
     BooleanLiteral {
         value: bool,
     },
     NilLiteral,
+    NumberLiteral {
+        start: usize, 
+        end: usize,
+    },
+    StringLiteral {
+        start: usize,
+        end: usize,
+    },
 }
