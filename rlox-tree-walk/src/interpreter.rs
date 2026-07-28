@@ -1,6 +1,6 @@
 use fnv::FnvHashMap;
 use std::rc::Rc;
-use std::cell::{Ref, RefCell};
+use std::cell::RefCell;
 
 use crate::token::{TokenType};
 use crate::expr::{Expr, LiteralObject};
@@ -8,6 +8,7 @@ use crate::stmt::Stmt;
 use crate::errors::{RuntimeError, lox_error};
 use crate::utils;
 use crate::lox_callable::*;
+use crate::native_functions::ClockFunction;
 
 const EPSILON: f32 = 1e-6;
 const IGNORE_USIZE: usize = 0;
@@ -36,7 +37,7 @@ impl Interpreter {
 
         env.borrow_mut().define(
             "clock".to_string(),
-            LiteralValue::Function(Function::Native(NativeFunction::Clock(ClockFunction)))
+            LiteralValue::Function(Function::Native(Rc::new(ClockFunction)))
         );
 
         Interpreter { globals: env.clone(), variables: env.clone(), repl_mode: repl_mode }

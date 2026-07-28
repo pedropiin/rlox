@@ -333,7 +333,7 @@ impl<'a> Parser<'a> {
             return Ok(Box::new(Expr::Unary { operator: op, right: rhs }))
         }
 
-        self.primary()
+        self.call()
     }
 
     fn call(&mut self) -> Result<Box<Expr>, ParserErrTup> {
