@@ -1,0 +1,4 @@
+<fn foo1>
+<fn foo2>
+// STDERR
+[line 6] FunctionNotComparableError: Cannot compare two callable values.

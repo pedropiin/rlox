@@ -1,0 +1,3 @@
+50
+// STDERR
+[line 8] UndefinedVariableError: Undefined variable 'y'.

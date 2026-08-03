@@ -1,0 +1,8 @@
+fun mulByTen(y) {
+    var ten = 10;
+    print y * ten;
+}
+
+var x = 5;
+mulByTen(x);
+print y;

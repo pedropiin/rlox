@@ -1,0 +1,10 @@
+fun foo1() {
+    print "inside foo1";
+}
+
+foo1();
+print foo1;
+
+var x = 10;
+print x;
+x();

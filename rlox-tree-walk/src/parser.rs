@@ -5,11 +5,8 @@ use crate::token::TokenType::{self, *};
 use crate::expr::Expr;
 use crate::stmt::Stmt;
 use crate::expr::LiteralObject::{self};
-use crate::errors::{ParserError, lox_error, MAX_ARGS};
+use crate::errors::{ParserErrTup, ParserError, lox_error, MAX_ARGS};
 use crate::utils::{FUNCTION_MODE, METHOD_MODE};
-
-#[derive(Clone)]
-struct ParserErrTup(usize, ParserError);
 
 pub struct Parser<'a> {
     tokens: &'a mut Vec<Token>,
@@ -359,7 +356,7 @@ impl<'a> Parser<'a> {
                     lox_error(self.peek().line, ParserError::TooManyArguments.into());
                 }
                 args.push(self.expression()?);
-                if self.match_token(&[Comma]) {
+                if !self.match_token(&[Comma]) {
                     break;
                 }
             }

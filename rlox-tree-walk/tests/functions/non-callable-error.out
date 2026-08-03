@@ -1,0 +1,5 @@
+inside foo1
+<fn foo1>
+10
+// STDERR
+[line 10] NonCallableValue: Can only call functions and classes.

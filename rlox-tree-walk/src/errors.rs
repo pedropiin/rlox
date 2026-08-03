@@ -180,6 +180,9 @@ impl From<ParserError> for LoxError {
     }
 }
 
+pub struct ParserErrTup(pub usize, pub ParserError);
+
+
 // All runtime errors that may be evaluated during AST interpretation
 pub enum RuntimeError {
     InvalidUnaryOperandError,
@@ -193,6 +196,7 @@ pub enum RuntimeError {
     NonCallableValueError,
     FunctionNotComparableError,
     CallParityError(usize, usize),
+    ClockCallError,
 }
 
 impl RuntimeError {
@@ -220,6 +224,8 @@ impl RuntimeError {
                 => "Cannot compare two callable values.".to_string(),
             RuntimeError::CallParityError(og_parity, found_parity)
                 => format!("Expected {} arguments, but got {} in call.", og_parity, found_parity),
+            RuntimeError::ClockCallError
+                => "Non-monotonic clock drift caused interal 'clock' duration to be negative.".to_string(),
         }
     }
 
@@ -247,6 +253,8 @@ impl RuntimeError {
                 => "FunctionNotComparableError".to_string(),
             RuntimeError::CallParityError(_, __)
                 => "CallParityError".to_string(),
+            RuntimeError::ClockCallError
+                => "ClockCallError".to_string(),
         }
     }
 }
@@ -256,3 +264,5 @@ impl From<RuntimeError> for LoxError {
         LoxError::RuntimeErr(err)
     }
 }
+
+pub struct RuntimeErrTup(pub usize, pub RuntimeError);

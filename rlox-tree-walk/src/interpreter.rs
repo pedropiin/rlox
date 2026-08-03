@@ -5,15 +5,12 @@ use std::cell::RefCell;
 use crate::token::{TokenType};
 use crate::expr::{Expr, LiteralObject};
 use crate::stmt::Stmt;
-use crate::errors::{RuntimeError, lox_error};
-use crate::utils;
+use crate::errors::{RuntimeErrTup, RuntimeError, lox_error};
+use crate::utils::{IGNORE_USIZE, parse_escape_sequences};
 use crate::lox_callable::*;
 use crate::native_functions::ClockFunction;
 
 const EPSILON: f32 = 1e-6;
-const IGNORE_USIZE: usize = 0;
-
-pub struct RuntimeErrTup(usize, RuntimeError);
 
 #[derive(Debug, Clone)]
 pub enum LiteralValue {
@@ -26,7 +23,7 @@ pub enum LiteralValue {
 }
 
 pub struct Interpreter {
-    globals: Rc<RefCell<Environment>>,
+    pub globals: Rc<RefCell<Environment>>,
     variables: Rc<RefCell<Environment>>,
     repl_mode: bool,
 }
@@ -79,7 +76,10 @@ impl Interpreter {
                 }
             },
             Stmt::Function { name, params, body } => {
-                todo!();
+                let user_def_func = UserDefinedFunction::new(Box::new(stmt.clone()));
+                let function = LiteralValue::Function(Function::UserDefined(user_def_func));
+                self.variables.borrow_mut().define((*name.lexeme).clone(), function);
+                Ok(())
             },
             Stmt::If { condition, then_branch, else_branch } => {
                 let condition_result: LiteralValue = self.evaluate(condition)?;
@@ -125,7 +125,7 @@ impl Interpreter {
         }
     }
 
-    fn execute_block(&mut self, statements: &Vec<Box<Stmt>>, environment: Rc<RefCell<Environment>>) -> Result<(), RuntimeErrTup> {
+    pub fn execute_block(&mut self, statements: &Vec<Box<Stmt>>, environment: Rc<RefCell<Environment>>) -> Result<(), RuntimeErrTup> {
         let previous_env = self.variables.clone();
 
         self.variables = environment;
@@ -254,7 +254,7 @@ impl Interpreter {
                         if arguments.len() != function.arity() {
                             return Err(RuntimeErrTup(paren.line, RuntimeError::CallParityError(function.arity(), arguments.len())))
                         }
-                        Ok(function.call(&self, arguments))
+                        Ok(function.call(self, arguments)?)
                     },
                     _ => Err(RuntimeErrTup(paren.line, RuntimeError::NonCallableValueError)),
                 }
@@ -265,7 +265,7 @@ impl Interpreter {
             Expr::Literal { value} => {
                 match value {
                     LiteralObject::StringLiteral { lexeme } =>  {
-                        Ok(LiteralValue::StringValue(utils::parse_escape_sequences(lexeme.as_ref())))
+                        Ok(LiteralValue::StringValue(parse_escape_sequences(lexeme.as_ref())))
                     },
                     LiteralObject::NumberLiteral { lexeme } => {
                         // if .unwrap() fails, it means that either 
@@ -388,7 +388,7 @@ impl Interpreter {
 }
 
 #[derive(Clone)]
-struct Environment {
+pub struct Environment {
     variables: FnvHashMap<String, LiteralValue>,
     enclosing: Option<Rc<RefCell<Environment>>>,
 }

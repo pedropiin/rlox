@@ -1,0 +1,6 @@
+// STDERR
+[line 5] CallParityError: Expected 2 arguments, but got 1 in call.
+// STDOUT
+3
+// STDERR
+[line 7] CallParityError: Expected 2 arguments, but got 3 in call.

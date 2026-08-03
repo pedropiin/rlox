@@ -1,0 +1,6 @@
+fun foo1() {}
+fun foo2() {}
+
+print foo1;
+print foo2;
+print foo1 == foo2;
