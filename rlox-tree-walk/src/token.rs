@@ -1,22 +1,22 @@
 use std::fmt;
+use std::rc::Rc;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Token {
     pub token_type: TokenType,
-    pub start: usize, 
-    pub end: usize,
+    pub lexeme: Rc<String>,
     pub line: usize,
 }
 
 impl Token {
-    pub fn new(token_type: TokenType, start: usize, end: usize, line: usize) -> Self {
-        Token { token_type, start, end, line }
+    pub fn new(token_type: TokenType, lexeme: Rc<String>, line: usize) -> Self {
+        Token { token_type, lexeme, line }
     }
 }
 
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<{:?}, {}, {}, {}>", self.token_type, self.start, self.end, self.line)
+        write!(f, "<{:?}, {}, {}>", self.token_type, self.lexeme.as_ref(), self.line)
     }
 }
 

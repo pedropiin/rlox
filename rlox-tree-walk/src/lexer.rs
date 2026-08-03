@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::token::Token;
 use crate::token::TokenType::{self, *};
 use crate::errors::{LexerError, lox_error};
@@ -22,7 +24,7 @@ impl<'a> Lexer<'a> {
             self.scan_token();
         }
 
-        self.tokens.push(Token::new(Eof, 0, 0, self.line));
+        self.tokens.push(Token::new(Eof, Rc::new(String::from("")), self.line));
         self.had_error
     }
 
@@ -199,8 +201,12 @@ impl<'a> Lexer<'a> {
 
     fn add_token(&mut self, token_type: TokenType) -> () {
         match token_type {
-            Str => self.tokens.push(Token::new(token_type, self.start + 1, self.current - 1, self.line)),
-            _   => self.tokens.push(Token::new(token_type, self.start, self.current, self.line)),
+            Str => self.tokens.push(Token::new(token_type, self.get_lexeme(self.start + 1, self.current - 1), self.line)),
+            _   => self.tokens.push(Token::new(token_type, self.get_lexeme(self.start, self.current), self.line)),
         }
+    }
+
+    fn get_lexeme(&self, start: usize, end: usize) -> Rc<String> {
+        Rc::new(self.source[start..end].to_string())
     }
 }

@@ -43,10 +43,10 @@ impl Interpreter {
         Interpreter { globals: env.clone(), variables: env.clone(), repl_mode: repl_mode }
     }
 
-    pub fn interpret<'a>(&mut self, stmts: &Vec<Box<Stmt>>, source: &'a str) -> bool {
+    pub fn interpret(&mut self, stmts: &Vec<Box<Stmt>>) -> bool {
         let mut had_runtime_error: bool = false;
         for stmt in stmts {
-            match self.execute(stmt, source) {
+            match self.execute(stmt) {
                 Ok(()) => (),
                 Err(runtime_err) => {
                     lox_error(runtime_err.0, runtime_err.1.into());
@@ -57,11 +57,11 @@ impl Interpreter {
         had_runtime_error
     }
 
-    fn execute<'a>(&mut self, stmt: &Stmt, source: &'a str) -> Result<(), RuntimeErrTup> {
+    fn execute(&mut self, stmt: &Stmt) -> Result<(), RuntimeErrTup> {
         match stmt {
             Stmt::Block { statements } => {
                 let local_env: Rc<RefCell<Environment>> = Rc::new(RefCell::new(Environment::new_local(self.variables.clone())));
-                self.execute_block(statements, local_env, source)
+                self.execute_block(statements, local_env)
             },
             Stmt::Break => {
                 Err(RuntimeErrTup(IGNORE_USIZE, RuntimeError::BreakStmtException))
@@ -70,7 +70,7 @@ impl Interpreter {
                 Err(RuntimeErrTup(IGNORE_USIZE, RuntimeError::ContinueStmtException))
             },
             Stmt::Expression { expr } => {
-                match self.evaluate(expr, source) {
+                match self.evaluate(expr) {
                     Ok(res) => {
                         if self.repl_mode { self.stringify(&res); }
                         Ok(())
@@ -82,16 +82,16 @@ impl Interpreter {
                 todo!();
             },
             Stmt::If { condition, then_branch, else_branch } => {
-                let condition_result: LiteralValue = self.evaluate(condition, source)?;
+                let condition_result: LiteralValue = self.evaluate(condition)?;
                 if self.is_truthy(&condition_result) {
-                    self.execute(then_branch, source)?;
+                    self.execute(then_branch)?;
                 } else if let Some(else_br) = else_branch {
-                    self.execute(else_br, source)?;
+                    self.execute(else_br)?;
                 }
                 Ok(())
             },
             Stmt::Print { expr } => {
-                match self.evaluate(expr, source) {
+                match self.evaluate(expr) {
                     Ok(val) => {
                         self.stringify(&val);
                         Ok(())
@@ -101,37 +101,37 @@ impl Interpreter {
             },
             Stmt::Var { token, initializer } => {
                 let init_value = match initializer {
-                    Some(expr) => self.evaluate(expr, source)?,
+                    Some(expr) => self.evaluate(expr)?,
                     None => LiteralValue::UninitializedValue,
                 };
-                let var_name: String = self.get_lexeme(token.start, token.end, source).to_string();
+                let var_name = (*token.lexeme).clone();
                 self.variables.borrow_mut().define(var_name, init_value);
                 Ok(())
             },
             Stmt::While { condition, body } => {
-                let mut condition_result: LiteralValue = self.evaluate(condition, source)?;
+                let mut condition_result: LiteralValue = self.evaluate(condition)?;
                 while self.is_truthy(&condition_result) {
-                    if let Err(err) = self.execute(body, source) {
+                    if let Err(err) = self.execute(body) {
                         match err.1 {
                             RuntimeError::BreakStmtException    => break,
                             RuntimeError::ContinueStmtException => continue,
                             _                                   => return Err(err),
                         }
                     }
-                    condition_result = self.evaluate(condition, source)?;
+                    condition_result = self.evaluate(condition)?;
                 }
                 Ok(())
             },
         }
     }
 
-    fn execute_block<'a>(&mut self, statements: &Vec<Box<Stmt>>, environment: Rc<RefCell<Environment>>, source: &'a str) -> Result<(), RuntimeErrTup> {
+    fn execute_block(&mut self, statements: &Vec<Box<Stmt>>, environment: Rc<RefCell<Environment>>) -> Result<(), RuntimeErrTup> {
         let previous_env = self.variables.clone();
 
         self.variables = environment;
         let mut error: Option<RuntimeErrTup> = None;
         for stmt in statements {
-            match self.execute(stmt, source) {
+            match self.execute(stmt) {
                 Ok(_) => (),
                 Err(err) => {
                     error = Some(err);
@@ -145,19 +145,19 @@ impl Interpreter {
         Ok(())
     }
 
-    fn evaluate<'a>(&mut self, expr: &Expr, source: &'a str) -> Result<LiteralValue, RuntimeErrTup> {
+    fn evaluate(&mut self, expr: &Expr) -> Result<LiteralValue, RuntimeErrTup> {
         match expr {
             Expr::Assign { token, value } => {
-                let rvalue = self.evaluate(value, source)?;
-                let lvalue_name: String = self.get_lexeme(token.start, token.end, source).to_string();
+                let rvalue = self.evaluate(value)?;
+                let lvalue_name: &String = token.lexeme.as_ref();
                 match self.variables.borrow_mut().assign(lvalue_name, rvalue.clone()) {
                     Ok(_) => Ok(rvalue),
                     Err(err) => Err(RuntimeErrTup(token.line, err))
                 }
             },
             Expr::Binary { left, operator, right } => {
-                let lhs_value: LiteralValue = self.evaluate(left.as_ref(), source)?;
-                let rhs_value: LiteralValue = self.evaluate(right.as_ref(), source)?;
+                let lhs_value: LiteralValue = self.evaluate(left.as_ref())?;
+                let rhs_value: LiteralValue = self.evaluate(right.as_ref())?;
 
                 match operator.token_type {
                     // Arithmetic Operators
@@ -242,11 +242,11 @@ impl Interpreter {
                 }
             },
             Expr::Call { callee, paren, args } => {
-                let callee: LiteralValue = self.evaluate(callee, source)?;
+                let callee: LiteralValue = self.evaluate(callee)?;
 
                 let mut arguments: Vec<LiteralValue> = Vec::new();
                 for arg in args {
-                    arguments.push(self.evaluate(arg.as_ref(), source)?);
+                    arguments.push(self.evaluate(arg.as_ref())?);
                 }
 
                 match callee {
@@ -260,19 +260,19 @@ impl Interpreter {
                 }
             },
             Expr::Grouping { expression } => {
-                self.evaluate(expression.as_ref(), source)
+                self.evaluate(expression.as_ref())
             },
             Expr::Literal { value} => {
                 match value {
-                    LiteralObject::StringLiteral { start, end } =>  {
-                        Ok(LiteralValue::StringValue(utils::parse_escape_sequences(self.get_lexeme(*start, *end, source))))
+                    LiteralObject::StringLiteral { lexeme } =>  {
+                        Ok(LiteralValue::StringValue(utils::parse_escape_sequences(lexeme.as_ref())))
                     },
-                    LiteralObject::NumberLiteral { start, end } => {
+                    LiteralObject::NumberLiteral { lexeme } => {
                         // if .unwrap() fails, it means that either 
                         // (1) tokenization or (2) parsing expressions failed,
                         // because if something else is stored inside a 
                         // "LiteralObject::NumberLiteral", it's not the users fault.
-                        Ok(LiteralValue::NumberValue(self.get_lexeme(*start, *end, source).parse::<f32>().unwrap()))
+                        Ok(LiteralValue::NumberValue(lexeme.as_ref().parse::<f32>().unwrap()))
                     },
                     LiteralObject::BooleanLiteral { value } => {
                         Ok(LiteralValue::BooleanValue(*value))
@@ -283,7 +283,7 @@ impl Interpreter {
                 }
             },
             Expr::Logical { left, operator, right } => {
-                let lhs_value: LiteralValue = self.evaluate(left, source)?;
+                let lhs_value: LiteralValue = self.evaluate(left)?;
                 match operator.token_type {
                     TokenType::Or => {
                         if self.is_truthy(&lhs_value) {
@@ -297,10 +297,10 @@ impl Interpreter {
                     },
                     _ => unreachable!("A logical expression cannot contain any other operator/token type."),
                 }
-                Ok(self.evaluate(right, source)?)
+                Ok(self.evaluate(right)?)
             },
             Expr::Unary { operator, right } => {
-                let rhs_value: LiteralValue = self.evaluate(right.as_ref(), source)?;
+                let rhs_value: LiteralValue = self.evaluate(right.as_ref())?;
 
                 match operator.token_type {
                     TokenType::Minus => {
@@ -317,7 +317,7 @@ impl Interpreter {
                 }
             },
             Expr::Variable { token } => {
-                let var_name: &str = self.get_lexeme(token.start, token.end, source);
+                let var_name: &str = token.lexeme.as_ref();
                 match self.variables.borrow().get(var_name) {
                     Some(val) => {
                         match val {
@@ -385,10 +385,6 @@ impl Interpreter {
         };
         println!("{}", str_value);
     }
-
-    fn get_lexeme<'a>(&self, start: usize, end: usize, source: &'a str) -> &'a str {
-        &source[start..end]
-    }
 }
 
 #[derive(Clone)]
@@ -421,8 +417,8 @@ impl Environment {
         }
     }
 
-    pub fn assign(&mut self, name: String, value: LiteralValue) -> Result<(), RuntimeError> {
-        if let Some(val) = self.variables.get_mut(&name) {
+    pub fn assign(&mut self, name: &str, value: LiteralValue) -> Result<(), RuntimeError> {
+        if let Some(val) = self.variables.get_mut(name) {
             *val = value;
             return Ok(())
         } else {
@@ -430,6 +426,6 @@ impl Environment {
                 return env.borrow_mut().assign(name, value)
             }            
         }
-        Err(RuntimeError::UndefinedVariableError(name))
+        Err(RuntimeError::UndefinedVariableError(name.to_string()))
     }
 }

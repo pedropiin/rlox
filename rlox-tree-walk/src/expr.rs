@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::token::Token;
 
 #[derive(Debug, Clone)]
@@ -36,18 +38,16 @@ pub enum Expr {
     },
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum LiteralObject {
     BooleanLiteral {
         value: bool,
     },
     NilLiteral,
     NumberLiteral {
-        start: usize, 
-        end: usize,
+        lexeme: Rc<String>,
     },
     StringLiteral {
-        start: usize,
-        end: usize,
+        lexeme: Rc<String>,
     },
 }
