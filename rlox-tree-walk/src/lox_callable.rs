@@ -1,18 +1,75 @@
 use std::rc::Rc;
-use std::fmt;
+use std::cell::RefCell;
+use std::{fmt, unreachable};
 
-use crate::interpreter::{Interpreter, LiteralValue};
+use crate::interpreter::{Environment, Interpreter, LiteralValue};
+use crate::Stmt;
+use crate::errors::{RuntimeErrTup, RuntimeError};
 
 pub trait LoxCallable {
-    fn call(&self, interpreter: &Interpreter, arguments: Vec<LiteralValue>) -> LiteralValue;
+    fn call(&self, interpreter: &mut Interpreter, arguments: Vec<LiteralValue>) -> Result<LiteralValue, RuntimeErrTup>;
     fn arity(&self) -> usize;
-    fn to_string(&self) -> &str;
+    fn to_string(&self) -> String;
 }
 impl fmt::Debug for dyn LoxCallable {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("LoxCallable")
             .field("name", &self.to_string())
             .finish()
+    }
+}
+
+#[derive(Debug,Clone)]
+pub struct UserDefinedFunction {
+    pub declaration: Box<Stmt>,
+}
+impl UserDefinedFunction {
+    pub fn new(decl: Box<Stmt>) -> UserDefinedFunction {
+        let Stmt::Function {..} = decl.as_ref() else {
+            unreachable!("Function declaration must be extracted out of a Stmt::Function node.
+                        Unreachable because 'UserDefinedFunction' instantiation is guarded by 
+                        the runtime's exhaustive statement pattern matching @interpreter.rs, line 81.")
+        };
+        UserDefinedFunction { declaration: decl }
+    }
+
+    fn call(&self, interpreter: &mut Interpreter, arguments: Vec<LiteralValue>) -> Result<LiteralValue, RuntimeErrTup> {
+        let Stmt::Function {name, params, body} = self.declaration.as_ref() else {
+            unreachable!("Function declaration must be extracted out of a Stmt::Function node.
+                        Unreachable because 'UserDefinedFunction' instantiation is guarded by 
+                        the runtime's exhaustive statement pattern matching @interpreter.rs, line 81.")
+        };
+
+        let env: Rc<RefCell<Environment>> = Rc::new(RefCell::new(Environment::new_local(interpreter.globals.clone())));
+        for i in 0..params.len() {
+            let param_name = (*params.get(i).unwrap().lexeme).clone();
+            let arg_value = arguments.get(i).unwrap().clone();
+            env.borrow_mut().define(param_name, arg_value);
+        }   
+
+        interpreter.execute_block(body, env)?;
+        Ok(LiteralValue::NilValue)
+    }
+
+    fn arity(&self) -> usize {
+        let Stmt::Function {name, params, body} = self.declaration.as_ref() else {
+            unreachable!("Function declaration must be extracted out of a Stmt::Function node.
+                        Unreachable because 'UserDefinedFunction' instantiation is guarded by 
+                        the runtime's exhaustive statement pattern matching @interpreter.rs, line 81.")
+        };
+        params.len()
+    }
+
+    fn to_string(&self) -> String {
+        let Stmt::Function {name, params, body} = self.declaration.as_ref() else {
+            unreachable!("Function declaration must be extracted out of a Stmt::Function node.
+                        Unreachable because 'UserDefinedFunction' instantiation is guarded by 
+                        the runtime's exhaustive statement pattern matching @interpreter.rs, line 81.")
+        };
+        let mut ret: String = String::from("<fn "); 
+        ret.push_str(name.lexeme.as_ref());
+        ret.push_str(">");
+        ret
     }
 }
 
@@ -24,13 +81,13 @@ pub enum Function {
     UserDefined(UserDefinedFunction),
 }
 impl LoxCallable for Function {
-    fn call(&self, interpreter: &Interpreter, arguments: Vec<LiteralValue>) -> LiteralValue {
+    fn call(&self, interpreter: &mut Interpreter, arguments: Vec<LiteralValue>) -> Result<LiteralValue, RuntimeErrTup> {
         match self {
             Function::Native(native_func) => {
                 native_func.call(interpreter, arguments)
             },
             Function::UserDefined(user_defined_func) => {
-                todo!();
+                user_defined_func.call(interpreter, arguments)
             },
         }
     }
@@ -41,23 +98,20 @@ impl LoxCallable for Function {
                 native_func.arity()
             },
             Function::UserDefined(user_defined_func) => {
-                todo!();
+                user_defined_func.arity()
             },
         }
     }
 
-    fn to_string(&self) -> &str {
+    fn to_string(&self) -> String {
         match self {
             Function::Native(native_func) => {
                 native_func.to_string()
             },
             Function::UserDefined(user_defined_func) => {
-                todo!();
+                user_defined_func.to_string()
             },
         }
     }
 
 }
-
-#[derive(Debug,Clone)]
-struct UserDefinedFunction;

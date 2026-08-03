@@ -1,0 +1,7 @@
+// STDERR
+[line 6] MissingParenArgumentList: Expected ')' after argument list.
+[line 9] CallableDefIdentifierExpected: Expected function name.
+[line 12] CallableDefMissingLeftParen: Expected '(' after function name.
+[line 14] CallableDefMissingRightParen: Expected ')' after parameter names.
+[line 17] MissingParameterError: Expected parameter name.
+[line 20] CallableDefMissingLeftBrace: Expected '{' before function body.
