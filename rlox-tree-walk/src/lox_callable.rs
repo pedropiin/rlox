@@ -31,7 +31,7 @@ impl LoxCallable for Function {
             },
             Function::UserDefined(user_defined_func) => {
                 todo!();
-            }
+            },
         }
     }
 
@@ -42,7 +42,7 @@ impl LoxCallable for Function {
             },
             Function::UserDefined(user_defined_func) => {
                 todo!();
-            }
+            },
         }
     }
 

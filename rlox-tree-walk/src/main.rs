@@ -34,7 +34,7 @@ fn run<'a>(source: &'a str, interpreter: &'a mut Interpreter) -> bool {
 
     if scanning_error || parsing_error { return true }
 
-    let had_runtime_error: bool = interpreter.interpret(&stmts, source);
+    let had_runtime_error: bool = interpreter.interpret(&stmts);
 
     if had_runtime_error { return true }
 

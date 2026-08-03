@@ -244,7 +244,7 @@ impl<'a> Parser<'a> {
             let value: Box<Expr> = self.assignment()?;
 
             if let Expr::Variable { token } = lvalue_expr.as_ref() {
-                return Ok(Box::new(Expr::Assign { token: *token, value: value }))
+                return Ok(Box::new(Expr::Assign { token: token.clone(), value: value }))
             }
 
             // No need to return early and synchronize, as there's no need to panic.
@@ -381,10 +381,10 @@ impl<'a> Parser<'a> {
 
         if self.match_token(&[Number]) {
             let tok = self.previous();
-            return Ok(Box::new(Expr::Literal { value: LiteralObject::NumberLiteral { start: tok.start , end: tok.end }}))
+            return Ok(Box::new(Expr::Literal { value: LiteralObject::NumberLiteral { lexeme: tok.lexeme }}))
         } else if self.match_token(&[Str]) {
             let tok: Token = self.previous();
-            return Ok(Box::new(Expr::Literal { value: LiteralObject::StringLiteral { start: tok.start, end: tok.end } }))
+            return Ok(Box::new(Expr::Literal { value: LiteralObject::StringLiteral { lexeme: tok.lexeme }}))
         }
 
         if self.match_token(&[Identifier]) {
@@ -427,11 +427,11 @@ impl<'a> Parser<'a> {
     }
 
     fn peek(&self) -> Token {
-        *self.tokens.get(self.current).unwrap_or_else(|| panic!("Could not get the {}th token.", self.current))
+        self.tokens.get(self.current).unwrap_or_else(|| panic!("Could not get the {}th token.", self.current)).clone()
     }
     
     fn previous(&self) -> Token {
-        *self.tokens.get(self.current - 1).unwrap_or_else(|| panic!("Could not get the {}th token.", self.current-1))
+        self.tokens.get(self.current - 1).unwrap_or_else(|| panic!("Could not get the {}th token.", self.current-1)).clone()
     }
 
     fn consume(&mut self, token_type: TokenType, err: ParserError) -> Result<Token, ParserErrTup> {
