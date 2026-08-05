@@ -1,0 +1,2 @@
+// STDERR
+[line 2] SemicolonExpetedAfterReturn: Expected ';' after return value.

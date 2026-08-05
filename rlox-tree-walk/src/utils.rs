@@ -1,5 +1,4 @@
 pub const FUNCTION_MODE: u8 = 1;
-pub const METHOD_MODE: u8 = 2;
 pub const IGNORE_USIZE: usize = 0;
 
 pub fn parse_escape_sequences(og_str: &str) -> String {

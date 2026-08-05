@@ -34,7 +34,7 @@ impl UserDefinedFunction {
     }
 
     fn call(&self, interpreter: &mut Interpreter, arguments: Vec<LiteralValue>) -> Result<LiteralValue, RuntimeErrTup> {
-        let Stmt::Function {name, params, body} = self.declaration.as_ref() else {
+        let Stmt::Function {name: _, params, body} = self.declaration.as_ref() else {
             unreachable!("Function declaration must be extracted out of a Stmt::Function node.
                         Unreachable because 'UserDefinedFunction' instantiation is guarded by 
                         the runtime's exhaustive statement pattern matching @interpreter.rs, line 81.")
@@ -47,12 +47,18 @@ impl UserDefinedFunction {
             env.borrow_mut().define(param_name, arg_value);
         }   
 
-        interpreter.execute_block(body, env)?;
-        Ok(LiteralValue::NilValue)
+        let mut return_value: LiteralValue = LiteralValue::NilValue;
+        if let Err(err) = interpreter.execute_block(body, env) {
+            match err.1 {
+                RuntimeError::ReturnStmtException(ret) => return_value = ret,
+                _ => return Err(err),
+            }
+        }
+        Ok(return_value)
     }
 
     fn arity(&self) -> usize {
-        let Stmt::Function {name, params, body} = self.declaration.as_ref() else {
+        let Stmt::Function {name: _, params, body: _} = self.declaration.as_ref() else {
             unreachable!("Function declaration must be extracted out of a Stmt::Function node.
                         Unreachable because 'UserDefinedFunction' instantiation is guarded by 
                         the runtime's exhaustive statement pattern matching @interpreter.rs, line 81.")
@@ -61,7 +67,7 @@ impl UserDefinedFunction {
     }
 
     fn to_string(&self) -> String {
-        let Stmt::Function {name, params, body} = self.declaration.as_ref() else {
+        let Stmt::Function {name, params: _, body: _} = self.declaration.as_ref() else {
             unreachable!("Function declaration must be extracted out of a Stmt::Function node.
                         Unreachable because 'UserDefinedFunction' instantiation is guarded by 
                         the runtime's exhaustive statement pattern matching @interpreter.rs, line 81.")

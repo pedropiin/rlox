@@ -75,7 +75,7 @@ impl Interpreter {
                     Err(err) => Err(err),
                 }
             },
-            Stmt::Function { name, params, body } => {
+            Stmt::Function { name, params: _, body: _ } => {
                 let user_def_func = UserDefinedFunction::new(Box::new(stmt.clone()));
                 let function = LiteralValue::Function(Function::UserDefined(user_def_func));
                 self.variables.borrow_mut().define((*name.lexeme).clone(), function);
@@ -98,6 +98,14 @@ impl Interpreter {
                     },
                     Err(err) => Err(err),
                 }
+            },
+            Stmt::Return { keyword: _, value } => {
+                let mut ret_value = LiteralValue::NilValue;
+                if let Some(val) = value {
+                    ret_value = self.evaluate(val.as_ref())?;
+                }
+
+                Err(RuntimeErrTup(IGNORE_USIZE, RuntimeError::ReturnStmtException(ret_value)))
             },
             Stmt::Var { token, initializer } => {
                 let init_value = match initializer {
