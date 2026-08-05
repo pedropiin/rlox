@@ -6,7 +6,7 @@ use crate::expr::Expr;
 use crate::stmt::Stmt;
 use crate::expr::LiteralObject::{self};
 use crate::errors::{ParserErrTup, ParserError, lox_error, MAX_ARGS};
-use crate::utils::{FUNCTION_MODE, METHOD_MODE};
+use crate::utils::{FUNCTION_MODE};
 
 pub struct Parser<'a> {
     tokens: &'a mut Vec<Token>,
@@ -69,6 +69,9 @@ impl<'a> Parser<'a> {
         if self.match_token(&[Print]) {
             return self.print_statement()
         } 
+        if self.match_token(&[Return]) {
+            return self.return_statement()
+        }
         if self.match_token(&[While]) {
             return self.while_statement();
         }
@@ -149,6 +152,20 @@ impl<'a> Parser<'a> {
         self.consume(Semicolon, ParserError::SemicolonExpected)?;
         
         Ok(Box::new(Stmt::Print { expr: expr }))
+    }
+
+    fn return_statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {
+        let keyword: Token = self.previous();
+        let mut value: Option<Box<Expr>> = None;
+        if !self.check(Semicolon) {
+            value = match self.expression() {
+                Ok(expr) => Some(expr),
+                Err(err) => return Err(err),
+            };
+        }
+
+        self.consume(Semicolon, ParserError::SemicolonExpetedAfterReturn)?;
+        Ok(Box::new(Stmt::Return { keyword, value }))
     }
 
     fn while_statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {

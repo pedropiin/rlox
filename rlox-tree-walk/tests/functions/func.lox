@@ -1,0 +1,16 @@
+fun foo(n, k) {
+    var p = 0;
+    var q = 0;
+    var t = 0;
+    if (n < 2) {
+        k = 0;
+        return n;
+    } else {
+        t = foo(n - 1, p) + foo(n - 2, q);
+        k = p + q + 1;
+        return t;
+    }
+}
+
+var m = 9;
+print foo(3, m);

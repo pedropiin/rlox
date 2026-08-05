@@ -11,7 +11,7 @@ impl LoxCallable for ClockFunction {
     fn call(&self, _1: &mut Interpreter, _2: Vec<LiteralValue>) -> Result<LiteralValue, RuntimeErrTup> {
         match SystemTime::now().duration_since(UNIX_EPOCH) {
             Ok(duration) => Ok(LiteralValue::NumberValue(duration.as_secs_f32())),
-            Err(e) => Err(RuntimeErrTup(IGNORE_USIZE, RuntimeError::ClockCallError)),
+            Err(_) => Err(RuntimeErrTup(IGNORE_USIZE, RuntimeError::ClockCallError)),
         }
     }
 

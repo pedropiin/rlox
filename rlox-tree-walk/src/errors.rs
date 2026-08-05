@@ -1,4 +1,5 @@
-use crate::utils::{get_callable_kind, FUNCTION_MODE, METHOD_MODE};
+use crate::utils::{get_callable_kind};
+use crate::interpreter::{LiteralValue};
 
 pub const MAX_ARGS: usize = 255;
 
@@ -88,6 +89,7 @@ pub enum ParserError {
     CallableDefMissingRightParen,
     MissingParameterError,
     CallableDefMissingLeftBrace(u8),
+    SemicolonExpetedAfterReturn,
 }
 
 impl ParserError {
@@ -129,6 +131,8 @@ impl ParserError {
                 => "Expected parameter name.".to_string(),
             ParserError::CallableDefMissingLeftBrace(mode)
                 => format!("Expected '{{' before {} body.", get_callable_kind(*mode)),
+            ParserError::SemicolonExpetedAfterReturn
+                => "Expected ';' after return value.".to_string(),
         }
     }
 
@@ -170,6 +174,8 @@ impl ParserError {
                 => "MissingParameterError".to_string(),
             ParserError::CallableDefMissingLeftBrace(_)
                 => "CallableDefMissingLeftBrace".to_string(),
+            ParserError::SemicolonExpetedAfterReturn
+                => "SemicolonExpetedAfterReturn".to_string(),
         }
     }
 }
@@ -197,6 +203,7 @@ pub enum RuntimeError {
     FunctionNotComparableError,
     CallParityError(usize, usize),
     ClockCallError,
+    ReturnStmtException(LiteralValue),
 }
 
 impl RuntimeError {
@@ -226,6 +233,8 @@ impl RuntimeError {
                 => format!("Expected {} arguments, but got {} in call.", og_parity, found_parity),
             RuntimeError::ClockCallError
                 => "Non-monotonic clock drift caused interal 'clock' duration to be negative.".to_string(),
+            RuntimeError::ReturnStmtException(_)
+                => "Error used as exception to properly deal with a 'return' statement. Not to be thrown at user.".to_string(),
         }
     }
 
@@ -255,6 +264,8 @@ impl RuntimeError {
                 => "CallParityError".to_string(),
             RuntimeError::ClockCallError
                 => "ClockCallError".to_string(),
+            RuntimeError::ReturnStmtException(_)
+                => "ReturnStmtException".to_string(),
         }
     }
 }
