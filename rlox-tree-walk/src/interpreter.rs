@@ -76,7 +76,8 @@ impl Interpreter {
                 }
             },
             Stmt::Function { name, params: _, body: _ } => {
-                let user_def_func = UserDefinedFunction::new(Box::new(stmt.clone()));
+                let closure: Rc<RefCell<Environment>> = Rc::new(RefCell::new(Environment::new_local(self.variables.clone())));
+                let user_def_func = UserDefinedFunction::new(Box::new(stmt.clone()), closure);
                 let function = LiteralValue::Function(Function::UserDefined(user_def_func));
                 self.variables.borrow_mut().define((*name.lexeme).clone(), function);
                 Ok(())
@@ -395,7 +396,7 @@ impl Interpreter {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Environment {
     variables: FnvHashMap<String, LiteralValue>,
     enclosing: Option<Rc<RefCell<Environment>>>,

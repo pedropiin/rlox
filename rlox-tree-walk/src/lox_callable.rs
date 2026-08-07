@@ -22,15 +22,16 @@ impl fmt::Debug for dyn LoxCallable {
 #[derive(Debug,Clone)]
 pub struct UserDefinedFunction {
     pub declaration: Box<Stmt>,
+    pub closure: Rc<RefCell<Environment>>,
 }
 impl UserDefinedFunction {
-    pub fn new(decl: Box<Stmt>) -> UserDefinedFunction {
+    pub fn new(decl: Box<Stmt>, clos: Rc<RefCell<Environment>>) -> UserDefinedFunction {
         let Stmt::Function {..} = decl.as_ref() else {
             unreachable!("Function declaration must be extracted out of a Stmt::Function node.
                         Unreachable because 'UserDefinedFunction' instantiation is guarded by 
                         the runtime's exhaustive statement pattern matching @interpreter.rs, line 81.")
         };
-        UserDefinedFunction { declaration: decl }
+        UserDefinedFunction { declaration: decl, closure: clos }
     }
 
     fn call(&self, interpreter: &mut Interpreter, arguments: Vec<LiteralValue>) -> Result<LiteralValue, RuntimeErrTup> {
@@ -40,7 +41,7 @@ impl UserDefinedFunction {
                         the runtime's exhaustive statement pattern matching @interpreter.rs, line 81.")
         };
 
-        let env: Rc<RefCell<Environment>> = Rc::new(RefCell::new(Environment::new_local(interpreter.globals.clone())));
+        let env: Rc<RefCell<Environment>> = Rc::new(RefCell::new(Environment::new_local(self.closure.clone())));
         for i in 0..params.len() {
             let param_name = (*params.get(i).unwrap().lexeme).clone();
             let arg_value = arguments.get(i).unwrap().clone();
