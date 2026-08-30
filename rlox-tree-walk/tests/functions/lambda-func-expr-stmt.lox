@@ -1,0 +1,5 @@
+fun () { print "inside lambda fn"; };
+
+fun () {};
+
+fun () {}

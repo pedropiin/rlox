@@ -5,10 +5,7 @@ fun add(a, b) {
 
 add(3, 5;
 
-// CallableDefIdentifierExpected
-fun (a, b) {}
-
-// CallableDefMissingParen
+// CallableDefMissingLeftParen
 fun foo1 a, b) {}
 
 fun foo2(a, b {}

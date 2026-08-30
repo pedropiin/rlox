@@ -1,11 +1,11 @@
 use core::panic;
 
+use crate::errors::{ParserErrTup, ParserError, lox_error, MAX_ARGS};
+use crate::expr::Expr;
+use crate::expr::LiteralObject::{self};
+use crate::stmt::Stmt;
 use crate::token::Token;
 use crate::token::TokenType::{self, *};
-use crate::expr::Expr;
-use crate::stmt::Stmt;
-use crate::expr::LiteralObject::{self};
-use crate::errors::{ParserErrTup, ParserError, lox_error, MAX_ARGS};
 use crate::utils::{FUNCTION_MODE};
 
 pub struct Parser<'a> {
@@ -15,6 +15,8 @@ pub struct Parser<'a> {
     had_error: bool,
     in_loop: bool,
 }
+
+pub struct FuncParseReturn(pub Vec<Token>, pub Vec<Box<Stmt>>);
 
 impl<'a> Parser<'a> {
     pub fn new(tokens: &'a mut Vec<Token>, stmts: &'a mut Vec<Box<Stmt>>) -> Parser<'a> {
@@ -214,16 +216,27 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn expr_statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {
-        let expr: Box<Expr> = self.expression()?;
-        self.consume(Semicolon, ParserError::SemicolonExpected)?;
-        
-        Ok(Box::new(Stmt::Expression { expr: expr }))
+    fn function(&mut self, mode: u8) -> Result<Box<Stmt>, ParserErrTup> {
+        /*
+        Necessary match to check against lambda functions 
+        as expression statements. e.g.:
+        """
+        fun () { print "inside lambda fn"; };
+        """
+        */
+        if !self.check(Identifier) {
+            self.retreat();
+            return self.expr_statement()
+        }
+
+        let name: Token = self.consume(Identifier, ParserError::CallableDefIdentifierExpected(mode))?;
+        let func_attr: FuncParseReturn = self.parse_func()?;
+
+        Ok(Box::new(Stmt::Function { name: name, params: func_attr.0, body: func_attr.1 }))
     }
 
-    fn function(&mut self, mode: u8) -> Result<Box<Stmt>, ParserErrTup> {
-        let name: Token = self.consume(Identifier, ParserError::CallableDefIdentifierExpected(mode))?;
-        self.consume(LeftParen, ParserError::CallableDefMissingLeftParen(mode))?;
+    fn parse_func(&mut self) -> Result<FuncParseReturn, ParserErrTup> {
+        self.consume(LeftParen, ParserError::CallableDefMissingLeftParen(FUNCTION_MODE))?;
 
         let mut params: Vec<Token> = Vec::new();
         if !self.check(RightParen) {
@@ -240,13 +253,30 @@ impl<'a> Parser<'a> {
         }
         self.consume(RightParen, ParserError::CallableDefMissingRightParen)?;
 
-        self.consume(LeftBrace, ParserError::CallableDefMissingLeftBrace(mode))?;
+        self.consume(LeftBrace, ParserError::CallableDefMissingLeftBrace(FUNCTION_MODE))?;
         let body: Vec<Box<Stmt>> = self.block()?;
 
-        Ok(Box::new(Stmt::Function { name: name, params: params, body: body }))
+        Ok(FuncParseReturn(params, body))
+    }
+
+    fn expr_statement(&mut self) -> Result<Box<Stmt>, ParserErrTup> {
+        let expr: Box<Expr> = self.expression()?;
+        self.consume(Semicolon, ParserError::SemicolonExpected)?;
+        
+        Ok(Box::new(Stmt::Expression { expr: expr }))
     }
     
     fn expression(&mut self) -> Result<Box<Expr>, ParserErrTup> {
+        self.lambda_func()
+    }
+
+    fn lambda_func(&mut self) -> Result<Box<Expr>, ParserErrTup> {
+        if self.match_token(&[Fun]) {
+            let func_attr: FuncParseReturn = self.parse_func()?;
+
+            return Ok(Box::new(Expr::Lambda { params: func_attr.0, body: func_attr.1 }))
+        }
+
         self.assignment()
     }
 
@@ -433,7 +463,10 @@ impl<'a> Parser<'a> {
     fn advance(&mut self) -> Token {
         if !self.is_at_end() { self.current += 1 }
         return self.previous()
+    }
 
+    fn retreat(&mut self) {
+        if self.current > 0 { self.current -= 1 }
     }
 
     fn is_at_end(&self) -> bool {
