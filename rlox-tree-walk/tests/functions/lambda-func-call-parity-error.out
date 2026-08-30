@@ -1,0 +1,5 @@
+25
+// STDERR
+[line 6] CallParityError: Expected 1 arguments, but got 2 in call.
+[line 7] CallParityError: Expected 1 arguments, but got 0 in call.
+[line 11] CallParityError: Expected 2 arguments, but got 1 in call.

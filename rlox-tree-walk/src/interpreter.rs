@@ -2,13 +2,13 @@ use fnv::FnvHashMap;
 use std::rc::Rc;
 use std::cell::RefCell;
 
-use crate::token::{TokenType};
-use crate::expr::{Expr, LiteralObject};
-use crate::stmt::Stmt;
 use crate::errors::{RuntimeErrTup, RuntimeError, lox_error};
-use crate::utils::{IGNORE_USIZE, parse_escape_sequences};
+use crate::expr::{Expr, LiteralObject};
 use crate::lox_callable::*;
 use crate::native_functions::ClockFunction;
+use crate::stmt::Stmt;
+use crate::token::{TokenType};
+use crate::utils::{IGNORE_USIZE, parse_escape_sequences};
 
 const EPSILON: f32 = 1e-6;
 
@@ -270,6 +270,10 @@ impl Interpreter {
             },
             Expr::Grouping { expression } => {
                 self.evaluate(expression.as_ref())
+            },
+            Expr::Lambda { params, body } => {
+                let lambda_func: LambdaFunction = LambdaFunction::new(params.clone(), body.clone());
+                Ok(LiteralValue::Function(Function::Lambda(lambda_func)))
             },
             Expr::Literal { value} => {
                 match value {

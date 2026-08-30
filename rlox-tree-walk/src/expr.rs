@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use crate::stmt::Stmt;
 use crate::token::Token;
 
 #[derive(Debug, Clone)]
@@ -20,6 +21,10 @@ pub enum Expr {
     },
     Grouping {
         expression: Box<Expr>,
+    },
+    Lambda {
+        params: Vec<Token>,
+        body: Vec<Box<Stmt>>,
     },
     Literal {
         value: LiteralObject,

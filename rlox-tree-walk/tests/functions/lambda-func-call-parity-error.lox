@@ -1,0 +1,17 @@
+var lambdaFunc = fun (x) {
+    print x * x;
+};
+
+lambdaFunc(5);
+lambdaFunc(5, 5);
+lambdaFunc();
+
+fun applyFnInFor(anonFunc) {
+    for (var i = 0; i <= 5; i = i + 1) {
+        anonFunc(i);
+    }
+}
+
+applyFnInFor(fun (x, y) {
+    print x + y;
+});
