@@ -1,5 +1,5 @@
 use std::rc::Rc;
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::{fmt, unreachable};
 
 use crate::errors::{RuntimeErrTup, RuntimeError};
@@ -138,14 +138,15 @@ impl UserDefinedFunction {
 pub struct LambdaFunction {
     pub params: Vec<Token>,
     pub body: Vec<Box<Stmt>>,
+    pub closure: Rc<RefCell<Environment>>,
 }
 impl LambdaFunction {
-    pub fn new(params: Vec<Token>, body: Vec<Box<Stmt>>) -> LambdaFunction {
-        LambdaFunction { params: params, body: body }
+    pub fn new(params: Vec<Token>, body: Vec<Box<Stmt>>, closure: Rc<RefCell<Environment>>) -> LambdaFunction {
+        LambdaFunction { params: params, body: body , closure: closure }
     }
 
     fn call(&self, interpreter: &mut Interpreter, arguments: Vec<LiteralValue>) -> Result<LiteralValue, RuntimeErrTup> {
-        let env: Rc<RefCell<Environment>> = Rc::new(RefCell::new(Environment::new_local(interpreter.globals.clone())));
+        let env: Rc<RefCell<Environment>> = Rc::new(RefCell::new(Environment::new_local(self.closure.clone())));
         for i in 0..self.params.len() {
             let param_name: String = (*self.params.get(i).unwrap().lexeme).clone();
             let arg_value: LiteralValue = arguments.get(i).unwrap().clone();

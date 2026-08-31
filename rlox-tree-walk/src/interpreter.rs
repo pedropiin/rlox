@@ -1,6 +1,6 @@
 use fnv::FnvHashMap;
 use std::rc::Rc;
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 
 use crate::errors::{RuntimeErrTup, RuntimeError, lox_error};
 use crate::expr::{Expr, LiteralObject};
@@ -272,7 +272,8 @@ impl Interpreter {
                 self.evaluate(expression.as_ref())
             },
             Expr::Lambda { params, body } => {
-                let lambda_func: LambdaFunction = LambdaFunction::new(params.clone(), body.clone());
+                let closure: Rc<RefCell<Environment>> = Rc::new(RefCell::new(Environment::new_local(self.variables.clone())));
+                let lambda_func: LambdaFunction = LambdaFunction::new(params.clone(), body.clone(), closure);
                 Ok(LiteralValue::Function(Function::Lambda(lambda_func)))
             },
             Expr::Literal { value} => {

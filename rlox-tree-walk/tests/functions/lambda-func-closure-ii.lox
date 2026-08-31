@@ -1,0 +1,19 @@
+fun makeAggregator(factor) {
+    var summ = 0;
+    return fun (x) {
+        summ = summ + (x * factor);
+        print x * factor;
+        return summ;
+    };
+}
+
+var doubleAggregator = makeAggregator(2);
+doubleAggregator(25);
+
+var aggAfterTwoOps = doubleAggregator(25);
+print aggAfterTwoOps;
+
+var aggAfterThreeOps = doubleAggregator(50);
+print aggAfterThreeOps;
+
+print (aggAfterTwoOps != aggAfterThreeOps);

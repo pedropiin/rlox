@@ -1,0 +1,9 @@
+fun outer() {
+    var i = 0;
+    return fun () {
+        var i = 5;
+        print i + 5;
+    };
+}
+
+outer()();
