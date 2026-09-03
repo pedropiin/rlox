@@ -1,0 +1,6 @@
+fun retStr1() {
+    return "str1";
+}
+retStr1();
+
+return "str2";

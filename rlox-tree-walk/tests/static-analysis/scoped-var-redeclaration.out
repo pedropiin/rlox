@@ -1,0 +1,2 @@
+// STDERR
+[line 4] VarRedeclarationInScope: Already a variable with name '{}' in this scope.

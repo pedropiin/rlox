@@ -8,4 +8,4 @@
 - No implicit type conversion
 - First class functions
 - Assignment as expressions
-- Lexical scoping
+- Lexical/static scoping

@@ -1,6 +1,9 @@
 use fnv::FnvHashMap;
-use std::rc::Rc;
 use std::cell::{Ref, RefCell};
+use std::collections::HashMap;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+use std::rc::Rc;
 
 use crate::errors::{RuntimeErrTup, RuntimeError, lox_error};
 use crate::expr::{Expr, LiteralObject};
@@ -24,8 +27,10 @@ pub enum LiteralValue {
 
 pub struct Interpreter {
     pub globals: Rc<RefCell<Environment>>,
+    pub locals: Box<FnvHashMap<Expr, usize>>,
     variables: Rc<RefCell<Environment>>,
     repl_mode: bool,
+    hasher: DefaultHasher,
 }
 
 impl Interpreter {
@@ -37,21 +42,21 @@ impl Interpreter {
             LiteralValue::Function(Function::Native(Rc::new(ClockFunction)))
         );
 
-        Interpreter { globals: env.clone(), variables: env.clone(), repl_mode: repl_mode }
+        Interpreter { globals: env.clone(), locals: Box::new(FnvHashMap::default()), variables: env.clone(), repl_mode: repl_mode, hasher: DefaultHasher::new() }
     }
 
     pub fn interpret(&mut self, stmts: &Vec<Box<Stmt>>) -> bool {
-        let mut had_runtime_error: bool = false;
+        let mut runtime_error: bool = false;
         for stmt in stmts {
             match self.execute(stmt) {
                 Ok(()) => (),
-                Err(runtime_err) => {
-                    lox_error(runtime_err.0, runtime_err.1.into());
-                    had_runtime_error = true;
+                Err(err) => {
+                    lox_error(err.0, err.1.into());
+                    runtime_error = true;
                 },
             }
         }
-        had_runtime_error
+        runtime_error
     }
 
     fn execute(&mut self, stmt: &Stmt) -> Result<(), RuntimeErrTup> {
@@ -157,11 +162,21 @@ impl Interpreter {
     fn evaluate(&mut self, expr: &Expr) -> Result<LiteralValue, RuntimeErrTup> {
         match expr {
             Expr::Assign { token, value } => {
-                let rvalue = self.evaluate(value)?;
-                let lvalue_name: &String = token.lexeme.as_ref();
-                match self.variables.borrow_mut().assign(lvalue_name, rvalue.clone()) {
-                    Ok(_) => Ok(rvalue),
-                    Err(err) => Err(RuntimeErrTup(token.line, err))
+                let assign_value = self.evaluate(value)?;
+
+                match self.locals.get(expr) {
+                    Some(distance) => { // Local variable. Therefore, in resolver 'locals' map
+                        match self.variables.borrow_mut().assign_at(*distance, &token.lexeme, assign_value.clone()) {
+                            Ok(_) => Ok(assign_value),
+                            Err(err) => Err(RuntimeErrTup(token.line, err)),
+                        }
+                    },
+                    None => { // Global variable
+                        match self.globals.borrow_mut().assign(&token.lexeme, assign_value.clone()) {
+                            Ok(_) => Ok(assign_value),
+                            Err(err) => Err(RuntimeErrTup(token.line, err)),
+                        }
+                    }
                 }
             },
             Expr::Binary { left, operator, right } => {
@@ -331,15 +346,41 @@ impl Interpreter {
                 }
             },
             Expr::Variable { token } => {
-                let var_name: &str = token.lexeme.as_ref();
-                match self.variables.borrow().get(var_name) {
-                    Some(val) => {
-                        match val {
-                            LiteralValue::UninitializedValue => Err(RuntimeErrTup(token.line, RuntimeError::UninitializedVariableError)),
-                            _ => Ok(val),
+                // Book implements this as a separate function "lookUpVariable()"
+                match self.locals.get(expr) {
+                    Some(distance) => { // Local variable. Should get state in resolver map
+                        match self.variables.borrow().get_at(*distance, &token.lexeme) {
+                            Ok(option_val) => { // There is a resolver scope with the given distance
+                                match option_val {
+                                    Some(val) => { // There is a variable in the resolver scope with the given distance
+                                        match val {
+                                            LiteralValue::UninitializedValue => Err(RuntimeErrTup(token.line, RuntimeError::UninitializedVariableError)),
+                                            _ => Ok(val),
+                                        }
+                                    }, 
+                                    None => { // No variable on the resolver scope with the given distance. Given that resolver defined it, something went wrong with resolving. Not to be thrown at user.
+                                        Err(RuntimeErrTup(token.line, RuntimeError::UndefinedVariableError(token.lexeme.to_string())))
+                                    }
+                                }
+                            },
+                            Err(err) => { // No resolver scope with the given distance. So something went wrong with resolving. Not to be thrown at user.
+                                Err(RuntimeErrTup(token.line, err))
+                            }
                         }
                     },
-                    None => Err(RuntimeErrTup(token.line, RuntimeError::UndefinedVariableError(var_name.to_string()))),
+                    None => { // Global or not-yet-defined variable. Should be fetched from dynamic 'globals' map
+                        match self.globals.borrow().get(&token.lexeme) {
+                            Some(val) => { // Globally defined variable
+                                match val {
+                                    LiteralValue::UninitializedValue => Err(RuntimeErrTup(token.line, RuntimeError::UninitializedVariableError)),
+                                    _ => Ok(val),
+                                }
+                            }
+                            None => {
+                                Err(RuntimeErrTup(token.line, RuntimeError::UndefinedVariableError(token.lexeme.to_string())))
+                            },
+                        }
+                    }
                 }
             },
         }
@@ -399,6 +440,10 @@ impl Interpreter {
         };
         println!("{}", str_value);
     }
+
+    pub fn resolve(&mut self, expr: Expr, depth: usize) {
+        self.locals.insert(expr, depth);
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -431,6 +476,11 @@ impl Environment {
         }
     }
 
+    pub fn get_at(&self, distance: usize, name: &str) -> Result<Option<LiteralValue>, RuntimeError> {
+        let environment = self.ancestor(distance)?;
+        Ok(environment.borrow().get(name))
+    }
+
     pub fn assign(&mut self, name: &str, value: LiteralValue) -> Result<(), RuntimeError> {
         if let Some(val) = self.variables.get_mut(name) {
             *val = value;
@@ -441,5 +491,25 @@ impl Environment {
             }            
         }
         Err(RuntimeError::UndefinedVariableError(name.to_string()))
+    }
+
+    pub fn assign_at(&mut self, distance: usize, name: &str, value: LiteralValue) -> Result<(), RuntimeError> {
+        let environment = self.ancestor(distance)?;
+        environment.borrow_mut().assign(name, value)
+    }
+
+    fn ancestor(&self, distance: usize) -> Result<Rc<RefCell<Environment>>, RuntimeError> {
+        let mut environment = Rc::new(RefCell::new(self.clone()));
+        let mut iter = Rc::new(RefCell::new(self.clone()));
+
+        for _ in 0..distance {
+            match environment.borrow().enclosing {
+                Some(ref env) => iter = env.clone(),
+                None => return Err(RuntimeError::InvalidResolverDistance),
+            }
+            environment = iter;
+        }
+
+        Ok(environment)
     }
 }
