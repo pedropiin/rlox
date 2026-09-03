@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::stmt::Stmt;
 use crate::token::Token;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Expr {
     Assign {
         token: Token,
@@ -43,7 +43,7 @@ pub enum Expr {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum LiteralObject {
     BooleanLiteral {
         value: bool,

@@ -1,26 +1,27 @@
 use std::fmt;
 use std::rc::Rc;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Token {
     pub token_type: TokenType,
     pub lexeme: Rc<String>,
     pub line: usize,
+    pub column: usize,
 }
 
 impl Token {
-    pub fn new(token_type: TokenType, lexeme: Rc<String>, line: usize) -> Self {
-        Token { token_type, lexeme, line }
+    pub fn new(token_type: TokenType, lexeme: Rc<String>, line: usize, column: usize) -> Self {
+        Token { token_type, lexeme, line, column }
     }
 }
 
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<{:?}, {}, {}>", self.token_type, self.lexeme.as_ref(), self.line)
+        write!(f, "<{:?}, {}, {}, {}>", self.token_type, self.lexeme.as_ref(), self.line, self.column)
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum TokenType {
     // Single-character tokens
     LeftParen,

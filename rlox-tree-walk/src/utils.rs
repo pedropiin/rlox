@@ -24,3 +24,10 @@ pub fn get_callable_kind(mode: u8) -> String {
     if mode == FUNCTION_MODE { "function".to_string() }
     else { "method".to_string() }
 }
+
+pub fn peek_vec<T>(vec: &mut Vec<T>) -> Option<&mut T> {
+    if vec.len() <= 0 { return None }
+    
+    let last: usize = vec.len() - 1;
+    vec.get_mut(last)
+}

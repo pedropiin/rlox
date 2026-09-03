@@ -11,7 +11,8 @@
 - [X] allow for escapes sequences inside string literals;
 - [ ] allow blocks inside REPL
 - [ ] deprecate 'statement-like' "print" and implement native "print" function
-- [ ] support for lambda functions
+- [X] support for lambda functions
+- [ ] support for (both prefix and postfix) '++' and '--' operators;
 
 ## CODE IMPROVEMENTS/REFACTORS:
 - [X] move out of the "index-based string slicing" for string lookups;

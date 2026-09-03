@@ -1,0 +1,5 @@
+global
+inner
+global
+// STDERR
+[line 5] UndefinedVariableError: Undefined variable 'b'.

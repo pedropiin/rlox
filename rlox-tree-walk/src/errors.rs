@@ -1,5 +1,6 @@
+use crate::resolver::Resolver;
 use crate::utils::{get_callable_kind};
-use crate::interpreter::{LiteralValue};
+use crate::interpreter::LiteralValue;
 
 pub const MAX_ARGS: usize = 255;
 
@@ -15,6 +16,7 @@ pub fn lox_error(line: usize, error_type: LoxError) {
 pub enum LoxError {
     LexerErr(LexerError),
     ParserErr(ParserError),
+    ResolverErr(ResolverError),
     RuntimeErr(RuntimeError),
 }
 
@@ -23,7 +25,8 @@ impl LoxError {
         match &self {
             LoxError::LexerErr(l) => l.message(),
             LoxError::ParserErr(p) => p.message(),
-            LoxError::RuntimeErr(r) => r.message(),
+            LoxError::ResolverErr(res) => res.message(),
+            LoxError::RuntimeErr(run) => run.message(),
         }
     }
 
@@ -31,7 +34,8 @@ impl LoxError {
         match &self {
             LoxError::LexerErr(l) => l.name(),
             LoxError::ParserErr(p) => p.name(),
-            LoxError::RuntimeErr(r) => r.name(),
+            LoxError::ResolverErr(res) => res.name(),
+            LoxError::RuntimeErr(run) => run.name(),
         }
     }
 }
@@ -189,6 +193,45 @@ impl From<ParserError> for LoxError {
 pub struct ParserErrTup(pub usize, pub ParserError);
 
 
+// All resolver errors that may be evaluated during variable resolving and binding
+pub enum ResolverError {
+    VarReadOwnInitializer,
+    VarRedeclarationInScope(String),
+    ReturnStmtOutisdeFunc,
+}
+impl ResolverError {
+    pub fn message(&self) -> String {
+        match self {
+            ResolverError::VarReadOwnInitializer
+                => "Can't read local variable in its own initializer,".to_string(),
+            ResolverError::VarRedeclarationInScope(s)
+                => "Already a variable with name '{}' in this scope.".to_string(),
+            ResolverError::ReturnStmtOutisdeFunc
+                => "Can't return from top-level code.".to_string(),
+        }
+    }
+
+    pub fn name(&self) -> String { 
+        match self {
+            ResolverError::VarReadOwnInitializer
+                => "VarReadOwnInitializer".to_string(),
+            ResolverError::VarRedeclarationInScope(_)
+                => "VarRedeclarationInScope".to_string(),
+            ResolverError::ReturnStmtOutisdeFunc
+                => "ReturnStmtOutisdeFunc".to_string(),
+        }
+    }
+}
+
+impl From<ResolverError> for LoxError {
+    fn from(err: ResolverError) -> Self {
+        LoxError::ResolverErr(err)
+    }
+}
+
+pub struct ResolverErrTup(pub usize, pub ResolverError);
+
+
 // All runtime errors that may be evaluated during AST interpretation
 pub enum RuntimeError {
     InvalidUnaryOperandError,
@@ -204,6 +247,8 @@ pub enum RuntimeError {
     CallParityError(usize, usize),
     ClockCallError,
     ReturnStmtException(LiteralValue),
+    InvalidResolverDistance,
+    InvalidResolverExpr,
 }
 
 impl RuntimeError {
@@ -235,6 +280,10 @@ impl RuntimeError {
                 => "Non-monotonic clock drift caused interal 'clock' duration to be negative.".to_string(),
             RuntimeError::ReturnStmtException(_)
                 => "Error used as exception to properly deal with a 'return' statement. Not to be thrown at user.".to_string(),
+            RuntimeError::InvalidResolverDistance
+                => "Resolver assigned an out of bounds index to expression. Not to be thrown at user.".to_string(),
+            RuntimeError::InvalidResolverExpr
+                => "Resolver scope map doesn't contain the given expression. Not to be thrown at user.".to_string(),
         }
     }
 
@@ -266,6 +315,10 @@ impl RuntimeError {
                 => "ClockCallError".to_string(),
             RuntimeError::ReturnStmtException(_)
                 => "ReturnStmtException".to_string(),
+            RuntimeError::InvalidResolverDistance
+                => "InvalidResolverDistance".to_string(),
+            RuntimeError::InvalidResolverExpr
+                => "InvalidResolverExpr".to_string(),
         }
     }
 }
